@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   /* ═══════════════════════════════════════════════════════════════════════
-     Logboek Yippie — 1-op-1 op portaal.yippievoordeklas.nl
+     Logboek Yippie - logboek voor de huiswerkklas, stijl van portaal.yippievoordeklas.nl
      Bron: dashboard/index.html (<style> + yp-design nacht 1/2) + yp-dialog.js
      ═══════════════════════════════════════════════════════════════════════ */
   :root{
@@ -51,7 +51,7 @@
   @keyframes ypUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   @keyframes ypSlideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
-  /* ═══ Header — LETTERLIJK portaal .hdr (dashboard/index.html) ═══ */
+  /* ═══ Header - letterlijk portaal .hdr (dashboard/index.html) ═══ */
   .topbar{position:relative;overflow:hidden;
     background:linear-gradient(135deg,#E8735A 0%,#EA7C63 45%,#F2A184 100%)}
   .topbar::before{content:"";position:absolute;right:-40px;top:-70px;width:210px;height:210px;
@@ -69,10 +69,12 @@
   .hdr-profile:hover,.hdr-profile:active{background:rgba(255,255,255,.38)}
   .hdr-profile svg{width:19px;height:19px;display:block}
 
-  /* ═══ Context bar — "les op het [school ▾]"; de rest zit in Beheer ═══ */
+  /* ═══ Context bar - les + school als dropdowns; klassen/lesuren/jaar in Beheer ═══ */
   .context{padding:16px 16px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .context .cx-lead{font-size:13.5px;font-weight:600;color:var(--ink-2)}
-  #schoolSel{width:auto;min-width:170px;font-weight:700;color:var(--ink)}
+  .context .cx-mid{font-size:13.5px;font-weight:600;color:var(--mute-2)}
+  #lesSel,#schoolSel{width:auto;font-weight:700;color:var(--ink)}
+  #lesSel{min-width:150px}
+  #schoolSel{min-width:160px}
   .save-pill{display:inline-flex;align-items:center;gap:5px;margin-left:auto;background:var(--surface);border:1px solid var(--line);
     border-radius:999px;padding:7px 13px;font-size:11.5px;font-weight:700;color:var(--mute);white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(15,23,42,.04)}
 
@@ -175,8 +177,6 @@
   .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   @media(max-width:560px){.cgrid{grid-template-columns:1fr 1fr}}
   .cgrid .span2{grid-column:span 2}
-  .autosave{display:flex;align-items:center;gap:8px;font-size:12px;color:#3F7E3F;font-weight:600;margin:12px 0 0}
-  .autosave .chk{width:16px;height:16px;border-radius:5px;background:#DEF1DE;color:#3F9A3F;display:grid;place-items:center;font-size:10px;flex-shrink:0}
 
   .entries{margin:0 -6px}
   .entry{border-top:1px solid var(--divider)}
@@ -208,8 +208,6 @@
   .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
   .dlg-actions .left{margin-right:auto}
   .dlg-actions.rev .btn-ghost{order:-1}
-  .lock-row{display:flex;gap:8px;align-items:flex-end}
-  .lock-row .field{flex:1;margin-bottom:0}
   .lock-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding:11px 13px;background:var(--divider);border-radius:12px}
   .lock-bar .lock-t{display:block;font-size:12px;font-weight:800;color:var(--ink)}
   .lock-bar .lock-s{display:block;font-size:11.5px;color:var(--mute);margin-top:1px}
@@ -219,16 +217,6 @@
   .roostergrid .rn{font-size:12px;font-weight:800;color:var(--ink);text-align:right}
   .roostergrid .dash{color:var(--mute);text-align:center}
   .roostergrid input{padding:8px 10px}
-  .dlg details.adv{margin:14px 0 0}
-  .dlg details.adv > summary{list-style:none;cursor:pointer;user-select:none;padding:11px 13px;font-size:11px;font-weight:800;
-    letter-spacing:.06em;text-transform:uppercase;color:var(--mute);background:var(--divider);border-radius:12px;display:flex;align-items:center;gap:7px}
-  .dlg details.adv > summary::-webkit-details-marker{display:none}
-  .dlg details.adv > summary::before{content:"›";font-size:14px;line-height:1;transition:transform .15s;color:var(--chev)}
-  .dlg details.adv[open] > summary{border-radius:12px 12px 0 0}
-  .dlg details.adv[open] > summary::before{transform:rotate(90deg)}
-  .dlg details.adv > summary:hover{color:var(--ink-2)}
-  .dlg details.adv .adv-body{border:1px solid var(--divider);border-top:none;border-radius:0 0 12px 12px;padding:12px 13px 4px}
-  .dlg details.adv .adv-body > .lock-row + .lock-row{margin-top:10px}
   .klaslist{display:flex;flex-direction:column}
   .klaslist .kl-row{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:7px 2px;border-top:1px solid var(--divider)}
   .klaslist .kl-row:first-child{border-top:0}
@@ -250,10 +238,10 @@
   .trash-item .ti-actions{display:flex;gap:8px;flex-wrap:wrap}
   .pin-in{letter-spacing:.5em;text-align:center;font-size:22px;font-weight:800}
 
-  /* ═══ Toast (yp-dialog.js) ═══ */
-  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1A1A1A;color:#fff;
-    font-size:13px;font-weight:600;padding:10px 20px;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.25);
-    max-width:90vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;z-index:100003}
+  /* ═══ Toast - bovenaan, los over de header zodat je 'm altijd ziet ═══ */
+  .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%) translateY(-18px);background:#1A1A1A;color:#fff;
+    font-size:13px;font-weight:600;padding:10px 20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);
+    max-width:90vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100003}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .hidden{display:none!important}
 
@@ -292,9 +280,10 @@
 </header>
 
 <div class="context">
-  <span class="cx-lead" id="cxLead">Wiskundeschool op het</span>
+  <select id="lesSel" aria-label="Les"></select>
+  <span class="cx-mid">op het</span>
   <select id="schoolSel" aria-label="School"></select>
-  <span class="save-pill" id="savePill">✓ Opgeslagen</span>
+  <span class="save-pill" id="savePill">Opgeslagen</span>
 </div>
 
 <div class="wrap">
@@ -308,7 +297,7 @@
 <dialog id="leerlingDialog" closedby="any" aria-labelledby="leerlingTitle">
   <form method="dialog" id="leerlingForm" class="dlg">
     <h3 id="leerlingTitle">Nieuwe leerling</h3>
-    <p class="dsub">Klas en mentor hoef je maar één keer per klas in te vullen — daarna gaat het vanzelf.</p>
+    <p class="dsub">Klas en mentor vul je één keer per klas in.</p>
     <div class="field">
       <label for="lf-naam">Naam</label>
       <input class="input" type="text" id="lf-naam" name="naam" required autocomplete="off">
@@ -335,7 +324,7 @@
 <dialog id="beheerDialog" closedby="any" aria-labelledby="beheerTitle">
   <form method="dialog" id="beheerForm" class="dlg">
     <h3 id="beheerTitle">Beheer</h3>
-    <p class="dsub">Hier wijzig je school, les, klassen, lesuren en het schooljaar.</p>
+    <p class="dsub">Klassen, mentoren, lesuren en het schooljaar. Les en school wissel je bovenaan.</p>
 
     <div class="field">
       <label for="bf-school">School</label>
@@ -344,38 +333,18 @@
     </div>
 
     <div class="lock-bar">
-      <div><span class="lock-t">&#128274; Beheerder</span><span class="lock-s" id="bf-lockstate">Hier wijzig je school, les, klassen, lesuren en schooljaar</span></div>
+      <div><span class="lock-t">&#128274; Beheerder</span><span class="lock-s" id="bf-lockstate">Ontgrendel om lesuren, klassen en het schooljaar te wijzigen.</span></div>
       <button type="button" class="btn btn-ghost btn-sm" id="bf-unlock">Ontgrendelen</button>
     </div>
 
-    <div class="grid2" style="margin-top:12px">
-      <div class="field"><label for="bf-org">Les</label>
-        <select id="bf-org" name="org" disabled></select></div>
-      <div class="field"><label for="bf-jaar">Schooljaar</label>
-        <input class="input" type="text" id="bf-jaar" name="schooljaar" autocomplete="off" readonly></div>
-    </div>
+    <div class="field" style="margin-top:12px"><label for="bf-jaar">Schooljaar</label>
+      <input class="input" type="text" id="bf-jaar" name="schooljaar" autocomplete="off" readonly></div>
 
     <fieldset id="roosterFs">
       <legend>Lesuren van deze school <span id="roosterHint" style="font-weight:600;text-transform:none;letter-spacing:0"></span></legend>
       <div class="roosterbox" id="roosterBox"></div>
       <div class="roostergrid hidden" id="roosterGrid"></div>
     </fieldset>
-
-    <details class="adv">
-      <summary>Geavanceerd — school of les toevoegen</summary>
-      <div class="adv-body">
-        <div class="lock-row">
-          <div class="field"><label for="bf-newschool">Nieuwe school toevoegen</label>
-            <input class="input" type="text" id="bf-newschool" autocomplete="off" placeholder="bijv. Montessori Lyceum" disabled></div>
-          <button type="button" class="btn btn-ghost btn-sm" id="bf-addschool" disabled>Toevoegen</button>
-        </div>
-        <div class="lock-row">
-          <div class="field"><label for="bf-newles">Nieuwe les toevoegen</label>
-            <input class="input" type="text" id="bf-newles" autocomplete="off" placeholder="bijv. Bijles Nederlands" disabled></div>
-          <button type="button" class="btn btn-ghost btn-sm" id="bf-addles" disabled>Toevoegen</button>
-        </div>
-      </div>
-    </details>
 
     <fieldset>
       <legend>Klassen &amp; mentoren <span id="bf-klasCount" style="font-weight:600;text-transform:none;letter-spacing:0"></span></legend>
@@ -393,9 +362,23 @@
 <dialog id="schoolDialog" aria-labelledby="schoolTitle">
   <form method="dialog" class="dlg">
     <h3 id="schoolTitle">Nieuwe school</h3>
-    <p class="dsub">Je logboeken blijven per school gescheiden.</p>
+    <p class="dsub">Elke school heeft een eigen lijst met leerlingen.</p>
     <div class="field"><label for="sd-name">Naam van de school</label>
       <input class="input" type="text" id="sd-name" autocomplete="off" required></div>
+    <div class="dlg-actions rev">
+      <button type="submit" value="ok" class="btn btn-primary">Toevoegen</button>
+      <button type="submit" value="cancel" class="btn btn-ghost">Annuleren</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ===== Les dialog (snel toevoegen) ===== -->
+<dialog id="lesDialog" aria-labelledby="lesTitle">
+  <form method="dialog" class="dlg">
+    <h3 id="lesTitle">Nieuwe les</h3>
+    <p class="dsub">Bijvoorbeeld Wiskundeschool of Bijles Nederlands. Klassen en leerlingen deel je met de andere lessen op dezelfde school.</p>
+    <div class="field"><label for="ld-name">Naam van de les</label>
+      <input class="input" type="text" id="ld-name" autocomplete="off" required></div>
     <div class="dlg-actions rev">
       <button type="submit" value="ok" class="btn btn-primary">Toevoegen</button>
       <button type="submit" value="cancel" class="btn btn-ghost">Annuleren</button>
@@ -561,8 +544,8 @@
   function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(function () { save(); markSaved(); }, 500); }
   function markDirty() { var p = document.getElementById("savePill"); if (p) p.textContent = "Opslaan…"; }
   function markSaved() {
-    var p = document.getElementById("savePill"); if (p) p.textContent = "✓ Opgeslagen";
-    Array.prototype.forEach.call(document.querySelectorAll(".save-flash"), function (x) { x.textContent = "✓ Opgeslagen"; });
+    var p = document.getElementById("savePill"); if (p) p.textContent = "Opgeslagen";
+    Array.prototype.forEach.call(document.querySelectorAll(".save-flash"), function (x) { x.textContent = "Opgeslagen"; });
   }
 
   // ---------- Helpers ----------
@@ -623,7 +606,7 @@
   // ---------- Rooster helpers ----------
   function lesuurOpts(sel) {
     var r = rooster() || [];
-    return '<option value="">—</option>' + r.map(function (x) {
+    return '<option value="">Geen</option>' + r.map(function (x) {
       return '<option value="' + x.n + '"' + (x.n === sel ? " selected" : "") + '>' + x.n + " (" + x.van + "–" + x.tot + ")</option>";
     }).join("");
   }
@@ -657,12 +640,16 @@
   function renderChrome() {
     document.getElementById("greet").textContent = greeting();
     document.getElementById("subline").textContent = langeDatum();
-    var lead = document.getElementById("cxLead");
-    if (lead) lead.textContent = state.organisatie + " op het";
+
+    var lesSel = document.getElementById("lesSel");
+    lesSel.innerHTML = state.lessen.map(function (n) {
+      return '<option value="' + esc(n) + '"' + (n === state.organisatie ? " selected" : "") + ">" + esc(n) + "</option>";
+    }).join("") + '<option value="__add">Nieuwe les toevoegen…</option>';
+
     var sel = document.getElementById("schoolSel");
     var names = Object.keys(state.scholen).sort(function (a, b) { return a.localeCompare(b, "nl"); });
     sel.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '"' + (n === state.school ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("")
-      + '<option value="__add">+ Nieuwe school (beheerder)…</option>';
+      + '<option value="__add">Nieuwe school toevoegen…</option>';
   }
 
   // ---------- Render: left panel ----------
@@ -733,7 +720,7 @@
     return '<div class="entry" data-id="' + e.id + '">' +
       '<button class="entry-sum" type="button">' +
         '<span class="d">' + fmtDate(e.datum) + "</span>" +
-        '<span class="eb"><span class="aw">' + (esc(aanwezigheid(e)) || "—") + "</span>" +
+        '<span class="eb"><span class="aw">' + (esc(aanwezigheid(e)) || "-") + "</span>" +
         '<span class="nt">' + nt + "</span></span>" +
         '<span class="chev">›</span>' +
       "</button>" +
@@ -748,7 +735,7 @@
         '<div class="field"><label>Notitie</label><textarea data-f="notitie">' + esc(e.notitie || "") + "</textarea></div>" +
         '<div class="entry-edit-actions">' +
           '<button class="btn btn-danger btn-sm" data-act="del-entry" type="button">Verwijderen</button>' +
-          '<span style="display:flex;align-items:center;gap:12px"><span class="save-flash">✓ Opgeslagen</span>' +
+          '<span style="display:flex;align-items:center;gap:12px"><span class="save-flash">Opgeslagen</span>' +
           '<button class="btn btn-ghost btn-sm" data-act="entry-done" type="button">Klaar</button></span>' +
         "</div>" +
       "</div></div>";
@@ -763,7 +750,7 @@
         '<div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"></path><path d="M14 4v6h6M8 13h8M8 17h6"></path></svg></div>' +
         "<p>Nog geen leerling gekozen</p>" +
-        "<small>Kies links een leerling, of voeg er eerst een toe.</small>" +
+        "<small>Kies een leerling, of voeg er een toe.</small>" +
         '<button class="btn btn-primary" data-act="new-leerling">+ Nieuwe leerling</button></div>';
       return;
     }
@@ -777,7 +764,7 @@
       '<div class="kop">' +
         '<span class="label">Schooljaar ' + esc(state.schooljaar) + "</span>" +
         "<h2>" + esc(l.naam) + "</h2>" +
-        '<p class="kv">Klas <b>' + (l.klas ? esc(l.klas) : "—") + "</b> &nbsp;·&nbsp; Mentor <b>" + (mentor ? esc(mentor) : "—") + "</b></p>" +
+        '<p class="kv">Klas <b>' + (l.klas ? esc(l.klas) : "-") + "</b> &nbsp;·&nbsp; Mentor <b>" + (mentor ? esc(mentor) : "-") + "</b></p>" +
         '<div class="kop-actions">' +
           '<button class="icon-btn" data-act="edit-leerling" title="Naam / klas / mentor wijzigen" aria-label="Gegevens bewerken">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>' +
@@ -793,11 +780,10 @@
       '<div class="sect"><span class="label">Nieuwe notitie</span>' +
         '<div class="compose">' + composeFieldsHTML(d) +
           '<button class="btn btn-primary btn-block" data-act="add-entry">Toevoegen aan logboek</button>' +
-          '<p class="autosave"><span class="chk">✓</span> Alles wordt automatisch bewaard — je hoeft niets extra te doen</p>' +
         "</div>" +
       "</div>" +
       '<div class="sect"><span class="label">Logboek</span>' +
-        '<div class="entries">' + (entries.length ? entries.map(entryHTML).join("") : '<div class="list-empty">Nog geen notities. Vul hierboven de eerste in.</div>') + "</div>" +
+        '<div class="entries">' + (entries.length ? entries.map(entryHTML).join("") : '<div class="list-empty">Nog geen notities.</div>') + "</div>" +
       "</div>";
   }
 
@@ -818,7 +804,7 @@
     l.entries.push(e);
     delete state.drafts[id];
     save(); markSaved(); render();
-    toast("Toegevoegd aan logboek ✓");
+    toast("Toegevoegd aan het logboek");
   }
 
   function findEntry(eid) {
@@ -937,6 +923,39 @@
       return;
     }
   });
+  // ---------- Les switch ----------
+  var lesSel = document.getElementById("lesSel");
+  lesSel.addEventListener("change", function () {
+    var v = lesSel.value;
+    if (v === "__add") {
+      lesSel.value = state.organisatie;
+      askPin("Voer de beheerderspincode in om een nieuwe les toe te voegen.").then(function (ok) {
+        if (!ok) { toast("Onjuiste pincode"); return; }
+        openLesDialog();
+      });
+      return;
+    }
+    state.organisatie = v;
+    save(); markSaved(); render();
+  });
+
+  var lesDialog = document.getElementById("lesDialog");
+  function openLesDialog() {
+    document.getElementById("ld-name").value = "";
+    lesDialog.showModal();
+    document.getElementById("ld-name").focus();
+  }
+  lesDialog.addEventListener("close", function () {
+    if (lesDialog.returnValue !== "ok") return;
+    var name = document.getElementById("ld-name").value.trim();
+    if (!name) return;
+    if (state.lessen.indexOf(name) !== -1) { toast("Die les bestaat al"); return; }
+    state.lessen.push(name);
+    state.organisatie = name;
+    save(); markSaved(); render();
+    toast("Les toegevoegd");
+  });
+
   // ---------- School switch ----------
   var schoolSel = document.getElementById("schoolSel");
   schoolSel.addEventListener("change", function () {
@@ -976,7 +995,7 @@
     var opts = Object.keys(cur().klassen).sort(function (a, b) { return a.localeCompare(b, "nl"); });
     var k = lf.klas.value.trim();
     var el = document.getElementById("lf-klas-hint");
-    if (cur().klassen[k]) el.textContent = "Bekende klas — mentor: " + (cur().klassen[k].mentor || "—");
+    if (cur().klassen[k]) el.textContent = "Bekende klas. Mentor: " + (cur().klassen[k].mentor || "onbekend");
     else if (opts.length) el.textContent = "Bestaande klassen: " + opts.join(", ");
     else el.textContent = "";
   }
@@ -1036,7 +1055,7 @@
     document.getElementById("roosterHint").textContent = roosterIsAangepast() ? "(aangepast voor deze school)" : "(vast rooster)";
     box.innerHTML = r
       ? r.map(function (x) { return "<b>" + esc(x.n) + "</b> &nbsp;" + esc(x.van) + " – " + esc(x.tot); }).join("<br>")
-      : "Deze school heeft nog geen vaste lesuren — ontgrendel om ze in te stellen.";
+      : "Nog geen vaste lesuren. Ontgrendel om ze in te stellen.";
     box.classList.remove("hidden");
     document.getElementById("roosterGrid").classList.add("hidden");
   }
@@ -1064,24 +1083,18 @@
   function paintBeheerPreview() {
     var el = document.getElementById("bf-preview");
     if (!el) return;
-    var les = (bf.org.value.trim() || "Les");
     var sch = document.getElementById("bf-school").value || state.school;
-    el.textContent = les + " op het " + sch;
+    el.textContent = "Leerlingen en klassen van het " + sch + ".";
   }
   function klasAantal(k) {
     return cur().leerlingen.filter(function (l) { return l.klas === k; }).length;
   }
   function setBeheerLock(unlocked) {
-    document.getElementById("bf-org").disabled = !unlocked;
     document.getElementById("bf-jaar").readOnly = !unlocked;
-    document.getElementById("bf-newschool").disabled = !unlocked;
-    document.getElementById("bf-addschool").disabled = !unlocked;
-    document.getElementById("bf-newles").disabled = !unlocked;
-    document.getElementById("bf-addles").disabled = !unlocked;
     document.getElementById("bf-unlock").textContent = unlocked ? "Ontgrendeld" : "Ontgrendelen";
     document.getElementById("bf-lockstate").textContent = unlocked
-      ? "Ontgrendeld — je wijzigt school, les, klassen, lesuren en schooljaar"
-      : "Hier wijzig je school, les, klassen, lesuren en schooljaar";
+      ? "Ontgrendeld. Je kunt lesuren, klassen en het schooljaar wijzigen."
+      : "Ontgrendel om lesuren, klassen en het schooljaar te wijzigen.";
     if (unlocked) paintRoosterEditable(); else paintRoosterReadonly();
     paintKlaslijst(unlocked);
   }
@@ -1094,9 +1107,9 @@
       box.innerHTML = namen.length
         ? namen.map(function (n) {
             return '<div class="kl-row"><span class="kl-k">' + esc(n) + '</span>' +
-              '<span class="kl-m">' + (kl[n].mentor ? esc(kl[n].mentor) : "—") + "</span></div>";
+              '<span class="kl-m">' + (kl[n].mentor ? esc(kl[n].mentor) : "-") + "</span></div>";
           }).join("")
-        : '<div class="kl-empty">Nog geen klassen aangemaakt op deze school.</div>';
+        : '<div class="kl-empty">Nog geen klassen.</div>';
       return;
     }
     box.innerHTML = namen.map(function (n) {
@@ -1126,31 +1139,22 @@
   function openBeheer() {
     jaarUnlocked = false;
     beheerSchool = state.school;
-    var os = document.getElementById("bf-org");
-    os.innerHTML = state.lessen.map(function (n) { return '<option value="' + esc(n) + '"' + (n === state.organisatie ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
     var ss = document.getElementById("bf-school");
     ss.innerHTML = Object.keys(state.scholen).sort().map(function (n) { return '<option value="' + esc(n) + '"' + (n === state.school ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
-    document.getElementById("bf-newschool").value = "";
-    document.getElementById("bf-newles").value = "";
     document.getElementById("bf-jaar").value = state.schooljaar;
-    var adv = beheerDialog.querySelector("details.adv");
-    if (adv) adv.open = false;
     setBeheerLock(false);
     paintBeheerPreview();
     beheerDialog.showModal();
   }
-  bf.org.addEventListener("change", paintBeheerPreview);
   document.getElementById("bf-school").addEventListener("change", paintBeheerPreview);
   document.getElementById("bf-unlock").addEventListener("click", function () {
     if (jaarUnlocked) return;
-    askPin("Voer de beheerderspincode in om les, schooljaar, lesuren en klassen te wijzigen.").then(function (ok) {
+    askPin("Voer de beheerderspincode in om lesuren, klassen en het schooljaar te wijzigen.").then(function (ok) {
       if (!ok) { toast("Onjuiste pincode"); return; }
       jaarUnlocked = true;
       setBeheerLock(true);
-      var adv = beheerDialog.querySelector("details.adv");
-      if (adv) adv.open = true;
-      document.getElementById("bf-org").focus();
-      toast("Ontgrendeld — beheerder");
+      document.getElementById("bf-jaar").focus();
+      toast("Ontgrendeld");
     });
   });
   function bumpKlasCount() {
@@ -1190,35 +1194,8 @@
   document.getElementById("bf-klaslist").addEventListener("input", function (e) {
     if (e.target.classList.contains("kl-nk")) e.target.value = e.target.value.toUpperCase();
   });
-  document.getElementById("bf-addschool").addEventListener("click", function () {
-    if (!jaarUnlocked) return;
-    var name = document.getElementById("bf-newschool").value.trim();
-    if (!name) return;
-    if (state.scholen[name]) { toast("Die school bestaat al"); return; }
-    state.scholen[name] = { klassen: {}, leerlingen: [], prullenbak: [] };
-    document.getElementById("bf-newschool").value = "";
-    var ss = document.getElementById("bf-school");
-    ss.innerHTML = Object.keys(state.scholen).sort().map(function (n) { return '<option value="' + esc(n) + '"' + (n === name ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
-    paintBeheerPreview();
-    toast("School toegevoegd — kies ‘Opslaan’ om te activeren");
-  });
-  document.getElementById("bf-addles").addEventListener("click", function () {
-    if (!jaarUnlocked) return;
-    var name = document.getElementById("bf-newles").value.trim();
-    if (!name) return;
-    if (state.lessen.indexOf(name) !== -1) { toast("Die les staat er al"); return; }
-    state.lessen.push(name);
-    document.getElementById("bf-newles").value = "";
-    var os = document.getElementById("bf-org");
-    os.innerHTML = state.lessen.map(function (n) { return '<option value="' + esc(n) + '"' + (n === name ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
-    paintBeheerPreview();
-    toast("Les toegevoegd — kies ‘Opslaan’ om te activeren");
-  });
   bf.addEventListener("submit", function () {
     if (jaarUnlocked) {
-      // Globale instellingen
-      state.organisatie = document.getElementById("bf-org").value || state.organisatie;
-      if (state.lessen.indexOf(state.organisatie) === -1) state.lessen.push(state.organisatie);
       state.schooljaar = document.getElementById("bf-jaar").value.trim() || state.schooljaar;
       // Per-school (van de school die in Beheer geopend werd)
       state.roosters = state.roosters || {};
