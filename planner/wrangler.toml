@@ -1,0 +1,23 @@
+# Cloudflare Pages project-config voor het Yippie-planningssysteem.
+# Deploy:  npx wrangler pages deploy public
+# Lokaal:  npm run dev
+name = "yippie-planner"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "public"
+
+# De Worker (public/_worker.js) draait alle /api/*-routes. Zie public/_routes.json.
+
+# --- KV -----------------------------------------------------------------------
+# Maak de namespace eenmalig aan en vul de id hieronder in:
+#   npx wrangler kv namespace create PLANNER_KV
+#   npx wrangler kv namespace create PLANNER_KV --preview
+[[kv_namespaces]]
+binding = "PLANNER_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_KV_PREVIEW_ID"
+
+# --- Niet-geheime variabelen ------------------------------------------------
+# Geheimen (SESSION_SECRET, SEED_ADMIN_EMAIL, SEED_ADMIN_PASS) NIET hier zetten;
+# gebruik:  npx wrangler pages secret put SESSION_SECRET
+[vars]
+ENV = "production"

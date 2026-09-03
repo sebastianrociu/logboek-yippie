@@ -1,0 +1,13 @@
+# Losse cron-worker. Draait elke 5 minuten en trapt geplande taken af.
+# Deploy:  npx wrangler deploy --config cron-worker/wrangler.toml
+name = "yippie-planner-cron"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Zelfde KV-namespace als de Pages-Worker (vul dezelfde id in als in ../wrangler.toml).
+[[kv_namespaces]]
+binding = "PLANNER_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
