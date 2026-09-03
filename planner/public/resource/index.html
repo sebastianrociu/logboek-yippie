@@ -44,85 +44,180 @@
   var $ = function (id) { return document.getElementById(id); };
   var panel = $('panel');
   var data = null;
-  var slots = [];
+  var slots = [];          // {datum, dagdeel}
+  var voorkeuren = [];     // vakIds
+  var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag' };
+  var DAGNAAM = { za: 'Za', zo: 'Zo' };
+  function ico(n, o) { return YP.icon ? YP.icon(n, o) : ''; }
+
+  function weekendDatums(van, tot, dagen) {
+    var out = []; if (!van || !tot) return out;
+    var t = Date.parse(van + 'T00:00:00Z'), end = Date.parse(tot + 'T00:00:00Z');
+    if (isNaN(t) || isNaN(end) || end < t) return out;
+    var WD = { 0: 'zo', 6: 'za' };
+    for (var g = 0; t <= end && g < 400; t += 86400000, g++) {
+      var tag = WD[new Date(t).getUTCDay()];
+      if (tag && (!dagen || dagen.indexOf(tag) !== -1)) out.push({ datum: new Date(t).toISOString().slice(0, 10), dag: tag });
+    }
+    return out;
+  }
+  function kortDatum(iso) {
+    var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso;
+    return new Date(t).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  function heeftSlot(datum, dd) { return slots.some(function (s) { return s.datum === datum && s.dagdeel === dd; }); }
+  function toggleSlot(datum, dd) {
+    if (heeftSlot(datum, dd)) slots = slots.filter(function (s) { return !(s.datum === datum && s.dagdeel === dd); });
+    else slots.push({ datum: datum, dagdeel: dd });
+  }
 
   function paint() {
     panel.innerHTML = '';
     var r = data.resource || {};
 
-    // eigen rooster
+    // ---- Wanneer word je verwacht ----
     var rc = YP.el('div', { class: 'card' });
-    rc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Mijn sessies' }), YP.el('span', { class: 'badge ' + (data.roosterStatus === 'definitief' ? 'ok' : 'neutral'), text: data.roosterStatus })]));
+    rc.appendChild(YP.el('div', { class: 'card-head' }, [
+      YP.el('h2', { text: 'Wanneer word je verwacht' }),
+      YP.el('span', { class: 'badge ' + (data.roosterStatus === 'definitief' ? 'ok' : 'neutral'), text: data.roosterStatus === 'definitief' ? 'definitief' : 'voorlopig' })
+    ]));
     var rp = YP.el('div', { class: 'card-pad' });
-    if (data.roosterStatus !== 'definitief') rp.appendChild(YP.el('div', { class: 'notice info', text: 'Het rooster is nog niet definitief. Hieronder staat de voorlopige indeling.' }));
-    var list = YP.el('div', { class: 'list' });
-    if (!data.sessies.length) list.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies aan jou gekoppeld.' }));
-    var DAGNAAM = { za: 'Zaterdag', zo: 'Zondag' };
-    var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' };
+    if (data.roosterStatus !== 'definitief') rp.appendChild(YP.el('div', { class: 'notice info', style: 'margin-bottom:12px', text: 'Het rooster is nog niet definitief. Dit is de voorlopige indeling.' }));
+    if (!data.sessies.length) rp.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies aan jou gekoppeld.' }));
+    var vandaag = new Date().toISOString().slice(0, 10);
     data.sessies.forEach(function (s) {
-      list.appendChild(YP.el('div', { class: 'list-row' }, [
-        YP.el('span', { class: 'lr-main' }, [
-          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? ' - ' + s.datum : (s.dag ? ' - ' + (DAGNAAM[s.dag] || s.dag) : ' - datum volgt')) }),
-          YP.el('span', { class: 'lr-sub', text: [s.blok, DDNAAM[s.dagdeel] || s.dagdeel, s.locatie, s.aantal + ' leerling(en)'].filter(Boolean).join(' - ') })
-        ])
+      var box = YP.el('div', { class: 'card', style: 'box-shadow:none;border-color:var(--divider);margin-bottom:10px' });
+      var bp = YP.el('div', { class: 'card-pad', style: 'padding:12px 14px' });
+      bp.appendChild(YP.el('div', { class: 'spread' }, [
+        YP.el('div', { class: 'lr-main' }, [
+          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? '  -  ' + kortDatum(s.datum) : (s.dag ? '  -  ' + (DAGNAAM[s.dag] || s.dag) + ' (datum volgt)' : '  -  datum volgt')) }),
+          YP.el('span', { class: 'lr-sub', text: [DDNAAM[s.dagdeel] || s.dagdeel, s.blok, s.locatie, s.leerlingen.length + ' leerling(en)'].filter(Boolean).join('  -  ') })
+        ]),
+        (function () {
+          if (!s.definitief || !s.datum || s.datum > vandaag) return null;
+          var b = YP.el('button', { class: 'btn btn-ghost btn-sm', html: ico('check', { size: 14 }) + ' Aanwezigheid' });
+          b.addEventListener('click', function () { aanwezigheidDialog(s); });
+          return b;
+        })()
       ]));
+      box.appendChild(bp);
+      rp.appendChild(box);
     });
-    rp.appendChild(list);
     rc.appendChild(rp);
     panel.appendChild(rc);
 
-    // beschikbaarheid
+    if (!r.id) {
+      var w = YP.el('div', { class: 'card card-pad' }, [YP.el('div', { class: 'notice warn', text: 'Je account is nog niet aan een begeleider gekoppeld. Vraag Yippie dit te doen.' })]);
+      panel.appendChild(w);
+      return;
+    }
+
+    // ---- Beschikbaarheid: weekend-kalender ----
     var bc = YP.el('div', { class: 'card' });
     bc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Mijn beschikbaarheid' })]));
-    var bp = YP.el('div', { class: 'card-pad' });
-    if (!r.id) { bp.appendChild(YP.el('div', { class: 'notice warn', text: 'Je account is nog niet aan een begeleider gekoppeld. Vraag Yippie dit te doen.' })); bc.appendChild(bp); panel.appendChild(bc); return; }
+    var bp2 = YP.el('div', { class: 'card-pad' });
+    bp2.appendChild(YP.el('p', { class: 'hint', style: 'margin-bottom:10px', text: 'Tik de dagdelen aan waarop je kunt. Groen = beschikbaar.' }));
 
-    var vakTxt = (r.vakIds || []).length ? 'Vakken en jaarlagen beheert Yippie.' : 'Yippie heeft nog geen vakken/jaarlagen voor je ingesteld.';
-    bp.appendChild(YP.el('p', { class: 'hint', style: 'margin-bottom:10px', text: vakTxt }));
+    var blokWrap = YP.el('div', {});
+    function paintKalender() {
+      blokWrap.innerHTML = '';
+      (data.blokken || []).forEach(function (b) {
+        blokWrap.appendChild(YP.el('div', { class: 'label', style: 'margin:14px 0 6px', text: b.label }));
+        var acts = YP.el('div', { class: 'row', style: 'margin-bottom:8px' });
+        var datums = weekendDatums(b.van, b.tot, b.dagen);
+        var mkAct = function (txt, fn) { var x = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: txt }); x.addEventListener('click', function () { fn(datums); paintKalender(); }); return x; };
+        acts.appendChild(mkAct('Alle zaterdagochtenden', function (ds) { ds.forEach(function (d) { if (d.dag === 'za' && !heeftSlot(d.datum, 'ochtend')) slots.push({ datum: d.datum, dagdeel: 'ochtend' }); }); }));
+        acts.appendChild(mkAct('Hele blok', function (ds) { ds.forEach(function (d) { ['ochtend', 'middag'].forEach(function (dd) { if (!heeftSlot(d.datum, dd)) slots.push({ datum: d.datum, dagdeel: dd }); }); }); }));
+        acts.appendChild(mkAct('Blok wissen', function (ds) { var set = {}; ds.forEach(function (d) { set[d.datum] = 1; }); slots = slots.filter(function (s) { return !set[s.datum]; }); }));
+        blokWrap.appendChild(acts);
 
-    var slotList = YP.el('div', { class: 'list' });
-    function paintSlots() {
-      slotList.innerHTML = '';
-      if (!slots.length) slotList.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen datums ingevuld.' }));
-      slots.slice().sort(function (a, b) { return a.datum < b.datum ? -1 : 1; }).forEach(function (s) {
-        var row = YP.el('div', { class: 'list-row' }, [
-          YP.el('span', { class: 'lr-main' }, [YP.el('span', { class: 'lr-title', text: s.datum + ' - ' + ({ ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' }[s.dagdeel] || s.dagdeel) })]),
-          YP.el('button', { class: 'lr-del' }, ['×'])
-        ]);
-        row.querySelector('.lr-del').addEventListener('click', function () {
-          slots = slots.filter(function (x) { return !(x.datum === s.datum && x.dagdeel === s.dagdeel); }); paintSlots();
+        var wg = YP.el('div', { class: 'weekgrid' });
+        datums.forEach(function (d) {
+          var col = YP.el('div', { class: 'weekcol' }, [YP.el('div', { class: 'wc-day', text: kortDatum(d.datum) })]);
+          ['ochtend', 'middag'].forEach(function (dd) {
+            var cell = YP.el('label', { class: 'weekcell' }, [
+              YP.el('input', { type: 'checkbox' }),
+              YP.el('span', { text: DDNAAM[dd] })
+            ]);
+            var inp = cell.querySelector('input');
+            inp.checked = heeftSlot(d.datum, dd);
+            inp.addEventListener('change', function () { toggleSlot(d.datum, dd); });
+            col.appendChild(cell);
+          });
+          wg.appendChild(col);
         });
-        slotList.appendChild(row);
+        if (!datums.length) blokWrap.appendChild(YP.el('div', { class: 'hint', text: 'Dit blok heeft nog geen begin- en einddatum.' }));
+        else blokWrap.appendChild(wg);
       });
+      if (!(data.blokken || []).length) blokWrap.appendChild(YP.el('div', { class: 'empty', text: 'Er zijn nog geen blokken met datums ingesteld.' }));
     }
-    paintSlots();
-    bp.appendChild(slotList);
-
-    var d = YP.el('input', { class: 'input', type: 'date', style: 'width:170px' });
-    var dd = YP.el('select', { style: 'width:130px' });
-    dd.innerHTML = '<option value="ochtend">Ochtend</option><option value="middag">Middag</option><option value="avond">Avond</option>';
-    var add = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, ['Datum erbij']);
-    add.addEventListener('click', function () {
-      if (!d.value) return;
-      if (!slots.some(function (x) { return x.datum === d.value && x.dagdeel === dd.value; })) slots.push({ datum: d.value, dagdeel: dd.value });
-      d.value = ''; paintSlots();
-    });
-    bp.appendChild(YP.el('div', { class: 'row', style: 'margin-top:8px' }, [d, dd, add]));
+    paintKalender();
+    bp2.appendChild(blokWrap);
 
     var mx = YP.el('input', { class: 'input', type: 'number', min: '0', value: r.maxPerWeekend || 0, style: 'width:90px' });
-    bp.appendChild(YP.el('div', { class: 'field', style: 'margin-top:12px' }, [YP.el('label', { text: 'Max. sessies per weekend' }), mx]));
+    bp2.appendChild(YP.el('div', { class: 'field', style: 'margin-top:14px' }, [YP.el('label', { text: 'Max. sessies per weekend' }), mx]));
 
     var save = YP.el('button', { class: 'btn btn-primary btn-sm' }, ['Beschikbaarheid opslaan']);
     save.addEventListener('click', async function () {
       try {
         await YP.api.put('/api/resource/beschikbaarheid', { beschikbaarheid: slots, maxPerWeekend: +mx.value || 0 });
-        YP.toast('Opgeslagen', 'ok');
-        load();
+        YP.toast('Opgeslagen', 'ok'); load();
       } catch (e) { YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
     });
-    bp.appendChild(save);
-    bc.appendChild(bp);
+    bp2.appendChild(save);
+    bc.appendChild(bp2);
     panel.appendChild(bc);
+
+    // ---- Vakvoorkeuren ----
+    var vc = YP.el('div', { class: 'card' });
+    vc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Welke vakken geef je het liefst?' })]));
+    var vp = YP.el('div', { class: 'card-pad' });
+    if (!(data.vakNamen || []).length) vp.appendChild(YP.el('div', { class: 'hint', text: 'Yippie heeft nog geen vakken voor je ingesteld.' }));
+    var vHost = YP.el('div', { class: 'chipset' });
+    (data.vakNamen || []).forEach(function (v) {
+      var l = YP.el('label', { class: 'chip-check' }, [YP.el('input', { type: 'checkbox', value: v.id }), YP.el('span', { text: v.naam })]);
+      if (voorkeuren.indexOf(v.id) !== -1) l.querySelector('input').checked = true;
+      vHost.appendChild(l);
+    });
+    vp.appendChild(vHost);
+    if ((data.vakNamen || []).length) {
+      var vSave = YP.el('button', { class: 'btn btn-primary btn-sm', style: 'margin-top:12px' }, ['Voorkeuren opslaan']);
+      vSave.addEventListener('click', async function () {
+        var vv = Array.prototype.map.call(vHost.querySelectorAll('input:checked'), function (i) { return i.value; });
+        try { await YP.api.put('/api/resource/beschikbaarheid', { vakVoorkeuren: vv }); YP.toast('Opgeslagen', 'ok'); load(); }
+        catch (e) { YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
+      });
+      vp.appendChild(vSave);
+    }
+    vc.appendChild(vp);
+    panel.appendChild(vc);
+  }
+
+  function aanwezigheidDialog(s) {
+    var dlg = document.createElement('dialog');
+    dlg.style.maxWidth = '480px';
+    dlg.innerHTML = '<div class="dlg"><h3></h3><p class="dsub"></p><div class="db"></div>' +
+      '<div class="dlg-actions"><button type="button" class="btn btn-primary btn-sm" data-close>Klaar</button></div></div>';
+    dlg.querySelector('h3').textContent = 'Aanwezigheid - ' + s.vak;
+    dlg.querySelector('.dsub').textContent = kortDatum(s.datum) + ' ' + (DDNAAM[s.dagdeel] || s.dagdeel) + (s.locatie ? ' - ' + s.locatie : '');
+    var db = dlg.querySelector('.db');
+    s.leerlingen.forEach(function (l) {
+      var seg = YP.el('div', { class: 'seg' });
+      ['aanwezig', 'afwezig', 'afgemeld'].forEach(function (st) {
+        var lab = YP.el('label', {}, [YP.el('input', { type: 'radio', name: 'aw_' + l.id, value: st }), YP.el('span', { text: st.charAt(0).toUpperCase() + st.slice(1) })]);
+        if (l.aanwezigheid === st) lab.querySelector('input').checked = true;
+        lab.querySelector('input').addEventListener('change', async function () {
+          try { await YP.api.post('/api/resource/aanwezigheid', { sessieId: s.id, leerlingId: l.id, status: st }); l.aanwezigheid = st; YP.toast(l.naam + ': ' + st, 'ok'); }
+          catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+        });
+        seg.appendChild(lab);
+      });
+      db.appendChild(YP.el('div', { style: 'margin-bottom:10px' }, [YP.el('div', { class: 'lr-title', style: 'margin-bottom:4px', text: l.naam }), seg]));
+    });
+    document.body.appendChild(dlg);
+    dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('close', function () { dlg.remove(); load(); });
+    dlg.showModal();
   }
 
   async function load() {
@@ -130,6 +225,7 @@
     try {
       data = await YP.api.get('/api/resource/mij');
       slots = ((data.resource || {}).beschikbaarheid || []).slice();
+      voorkeuren = ((data.resource || {}).vakVoorkeuren || []).slice();
       paint();
     } catch (e) {
       panel.innerHTML = '<div class="card card-pad"><div class="notice bad">Kon je rooster niet laden.</div></div>';

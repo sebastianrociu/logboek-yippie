@@ -45,39 +45,112 @@
 (function () {
   document.documentElement.classList.add('readonly');
   var panel = document.getElementById('panel');
+  var listHost = null;
+  var alle = [];
+  var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag' };
+  var AWNAAM = { aanwezig: 'aanwezig', afwezig: 'afwezig', afgemeld: 'afgemeld' };
+  function ico(n, o) { return YP.icon ? YP.icon(n, o) : ''; }
+  function kortDatum(iso) { var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso; return new Date(t).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }); }
 
-  function esc(s) { return YP.esc(s); }
+  function render(zoek) {
+    listHost.innerHTML = '';
+    var lijst = alle;
+    if (zoek) { var q = zoek.toLowerCase(); lijst = alle.filter(function (l) { return l.leerling.toLowerCase().indexOf(q) !== -1; }); }
+
+    var perJaar = {};
+    lijst.forEach(function (l) { var k = l.jaarlaag || '(onbekend)'; (perJaar[k] = perJaar[k] || []).push(l); });
+    var jaren = Object.keys(perJaar).sort();
+    if (!jaren.length) { listHost.appendChild(YP.el('div', { class: 'card card-pad' }, [YP.el('div', { class: 'empty', text: zoek ? 'Geen leerling gevonden.' : 'Nog geen inschrijvingen van je school.' })])); return; }
+
+    jaren.forEach(function (jr) {
+      var card = YP.el('div', { class: 'card', style: 'margin-bottom:14px' });
+      card.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: jr + '  (' + perJaar[jr].length + ')' })]));
+      var list = YP.el('div', { class: 'list', style: 'padding:4px 14px 10px' });
+      perJaar[jr].sort(function (a, b) { return a.leerling < b.leerling ? -1 : 1; }).forEach(function (l) {
+        var sub = [];
+        if (l.vakken.length) sub.push(l.vakken.join(', '));
+        sub.push(l.ingedeeld ? l.ingedeeld + ' sessie(s)' : 'nog niet ingedeeld');
+        if (l.aanwezigheid && l.aanwezigheid.afwezig) sub.push(l.aanwezigheid.afwezig + 'x afwezig');
+        var row = YP.el('button', { class: 'list-row', type: 'button', style: 'width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--divider);cursor:pointer' }, [
+          YP.el('span', { class: 'lr-main' }, [
+            YP.el('span', { class: 'lr-title', text: l.leerling }),
+            YP.el('span', { class: 'lr-sub', text: sub.join('  -  ') })
+          ]),
+          YP.el('span', { class: 'badge ' + (l.status === 'geannuleerd' ? 'bad' : l.status === 'ingepland' ? 'neutral' : 'warn'), text: l.status }),
+          YP.el('span', { style: 'color:var(--chev);display:flex', html: ico('chevron-right', { size: 16 }) })
+        ]);
+        row.addEventListener('click', function () { leerlingDialog(l); });
+        list.appendChild(row);
+      });
+      card.appendChild(list);
+      listHost.appendChild(card);
+    });
+  }
+
+  function leerlingDialog(l) {
+    var dlg = document.createElement('dialog');
+    dlg.style.maxWidth = '520px';
+    dlg.innerHTML = '<div class="dlg"><h3></h3><p class="dsub"></p><div class="db"></div>' +
+      '<div class="dlg-actions"><button type="button" class="btn btn-primary btn-sm" data-close>Sluiten</button></div></div>';
+    dlg.querySelector('h3').textContent = l.leerling;
+    dlg.querySelector('.dsub').textContent = l.jaarlaag + (l.traject ? '  -  ' + (l.traject === 'examentraining' ? 'Examentraining' : 'Bijspijkertraject') : '') + (l.mentor ? '  -  mentor ' + l.mentor : '');
+    var db = dlg.querySelector('.db');
+
+    db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:4px', text: 'Vakken en blokken' }));
+    db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 12px', text: (l.vakken.join(', ') || '-') + '  |  ' + ((l.blokken || []).join('; ') || '-') }));
+
+    db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:4px', text: 'Sessies' }));
+    if (!l.sessies.length) db.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies. Verschijnt zodra de planning definitief is.' }));
+    var lst = YP.el('div', { class: 'list' });
+    l.sessies.forEach(function (s) {
+      lst.appendChild(YP.el('div', { class: 'list-row' }, [
+        YP.el('span', { class: 'lr-main' }, [
+          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? '  -  ' + kortDatum(s.datum) : '  -  datum volgt') }),
+          YP.el('span', { class: 'lr-sub', text: [DDNAAM[s.dagdeel] || s.dagdeel, s.locatie, s.begeleider].filter(Boolean).join('  -  ') })
+        ]),
+        s.aanwezigheid ? YP.el('span', { class: 'badge ' + (s.aanwezigheid === 'aanwezig' ? 'ok' : s.aanwezigheid === 'afwezig' ? 'bad' : 'warn'), text: AWNAAM[s.aanwezigheid] || s.aanwezigheid }) : null
+      ]));
+    });
+    db.appendChild(lst);
+    if (l.aanwezigheid && (l.aanwezigheid.aanwezig || l.aanwezigheid.afwezig || l.aanwezigheid.afgemeld)) {
+      db.appendChild(YP.el('p', { class: 'hint', style: 'margin-top:10px', text: 'Totaal: ' + l.aanwezigheid.aanwezig + 'x aanwezig, ' + l.aanwezigheid.afwezig + 'x afwezig, ' + l.aanwezigheid.afgemeld + 'x afgemeld.' }));
+    }
+
+    document.body.appendChild(dlg);
+    dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    dlg.showModal();
+  }
 
   async function load() {
     await YP.me;
     var d;
     try { d = await YP.api.get('/api/school/overzicht'); }
     catch (e) { panel.innerHTML = '<div class="card card-pad"><div class="notice bad">Kon het overzicht niet laden.</div></div>'; return; }
-
     if (!d.school) { panel.innerHTML = '<div class="card card-pad"><div class="notice warn">Je account is nog niet aan een school gekoppeld. Vraag Yippie dit te doen.</div></div>'; return; }
 
-    var ingedeeld = d.leerlingen.filter(function (l) { return l.ingedeeld > 0; }).length;
-    var html = '';
-    html += '<div class="card card-pad spread" style="margin-bottom:16px">';
-    html += '<div><h2>' + esc(d.school) + '</h2><p class="card-sub">' + d.leerlingen.length + ' ingeschreven leerling(en), ' + ingedeeld + ' ingedeeld. Planning: ' + esc(d.roosterStatus) + '.</p></div>';
-    html += '<button class="btn btn-ghost btn-sm" id="print">Afdrukken of pdf</button>';
-    html += '</div>';
+    alle = d.leerlingen || [];
+    var ingedeeld = alle.filter(function (l) { return l.ingedeeld > 0; }).length;
+    panel.innerHTML = '';
 
-    if (!d.leerlingen.length) {
-      html += '<div class="card card-pad"><div class="empty">Nog geen inschrijvingen van je school.</div></div>';
-    } else {
-      html += '<div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Leerling</th><th>Jaarlaag</th><th>Vakken</th><th>Blokken</th><th>Mentor</th><th>Status</th><th>Sessies</th></tr></thead><tbody>';
-      d.leerlingen.forEach(function (l) {
-        var ses = l.sessies.map(function (s) { return esc(s.vak) + (s.datum ? ' (' + esc(s.datum) + ')' : (s.dag ? ' (' + esc(s.dag) + ')' : '')); }).join('<br>') || '<span class="muted">nog niet ingedeeld</span>';
-        var blk = (l.blokken || []).map(esc).join('<br>') || '-';
-        html += '<tr><td><span class="lr-title">' + esc(l.leerling) + '</span></td><td>' + esc(l.jaarlaag) + '</td><td>' + esc(l.vakken.join(', ')) + '</td><td>' + blk + '</td><td>' + esc(l.mentor || '-') + '</td><td>' + esc(l.status) + '</td><td>' + ses + '</td></tr>';
-      });
-      html += '</tbody></table></div></div>';
-    }
-    html += '<p class="hint" style="margin-top:12px">Aanwezigheid per sessie en een exportknop (pdf/excel) komen in fase 3. Nu kun je deze pagina afdrukken of als pdf bewaren.</p>';
-    panel.innerHTML = html;
-    var p = document.getElementById('print');
-    if (p) p.addEventListener('click', function () { window.print(); });
+    var kop = YP.el('div', { class: 'card card-pad', style: 'margin-bottom:14px' });
+    var printBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', html: ico('download', { size: 14 }) + ' Afdrukken of pdf' });
+    printBtn.addEventListener('click', function () { window.print(); });
+    kop.appendChild(YP.el('div', { class: 'spread' }, [
+      YP.el('div', {}, [
+        YP.el('h2', { text: d.school }),
+        YP.el('p', { class: 'card-sub', text: alle.length + ' leerling(en), ' + ingedeeld + ' ingedeeld. Planning: ' + d.roosterStatus + '.' })
+      ]),
+      printBtn
+    ]));
+    var zoek = YP.el('input', { class: 'input', type: 'search', placeholder: 'Zoek een leerling op naam', style: 'margin-top:12px' });
+    zoek.addEventListener('input', function () { render(zoek.value.trim()); });
+    kop.appendChild(zoek);
+    panel.appendChild(kop);
+
+    listHost = YP.el('div', {});
+    panel.appendChild(listHost);
+    render('');
   }
   load();
 })();

@@ -9,7 +9,7 @@
    inschrijvingen (append) zodat gelijktijdige schrijfacties niet verdwijnen.
    ========================================================================== */
 
-const VERSION = '2026-09-04.4';
+const VERSION = '2026-09-04.6';
 
 const KEYS = {
   config: 'config',
@@ -851,15 +851,28 @@ async function handleApi(request, env) {
     const rid = auth.resourceId;
 
     if (sub === 'mij' && method === 'GET') {
-      const [res, rooster, config] = await Promise.all([
+      const [res, rooster, config, ins, aanw] = await Promise.all([
         readJSON(env, KEYS.resources), readJSON(env, KEYS.rooster), readJSON(env, KEYS.config),
+        readJSON(env, KEYS.inschrijvingen), readJSON(env, KEYS.aanwezigheid),
       ]);
       const me = res.items.find((x) => x.id === rid) || null;
       const blokN = (config.blokken || []).reduce((m, x) => (m[x.id] = x.label, m), {});
+      const vakN = (config.vakken || []).reduce((m, x) => (m[x.id] = x.naam, m), {});
+      const leerlingNaam = (id) => { const r = ins.items.find((x) => x.id === id); return r ? r.leerling.naam : id; };
       const sessies = rooster.sessies
         .filter((s) => s.resourceId === rid)
-        .map((s) => ({ id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie, blok: blokN[s.blokId] || '', vak: s.vak || '', aantal: (s.leerlingIds || []).length }));
-      return json({ resource: me, sessies, roosterStatus: rooster.status });
+        .sort((a, b) => (a.datum || '9') < (b.datum || '9') ? -1 : 1)
+        .map((s) => ({
+          id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie,
+          blok: blokN[s.blokId] || '', vak: s.vak || '', definitief: rooster.status === 'definitief',
+          leerlingen: (s.leerlingIds || []).map((id) => ({ id, naam: leerlingNaam(id), aanwezigheid: (aanw.perSessie[s.id] || {})[id] || '' })),
+        }));
+      return json({
+        resource: me,
+        vakNamen: me ? (me.vakIds || []).map((id) => ({ id, naam: vakN[id] || id })) : [],
+        blokken: (config.blokken || []).filter((b) => b.van && b.tot).map((b) => ({ id: b.id, label: b.label, van: b.van, tot: b.tot, dagen: b.dagen || ['za', 'zo'] })),
+        sessies, roosterStatus: rooster.status,
+      });
     }
     if (sub === 'beschikbaarheid' && method === 'PUT') {
       await mutate(env, KEYS.resources, (d) => {
@@ -870,7 +883,27 @@ async function handleApi(request, env) {
             datum: str(b.datum, 10), dagdeel: DAGDELEN.includes(b.dagdeel) ? b.dagdeel : 'ochtend',
           }));
         }
+        if (Array.isArray(body.vakVoorkeuren)) {
+          const eigen = new Set(me.vakIds || []);
+          me.vakVoorkeuren = body.vakVoorkeuren.map((v) => str(v, 40)).filter((v) => eigen.has(v)).slice(0, 30);
+        }
         if (body.maxPerWeekend != null) me.maxPerWeekend = Math.max(0, Math.min(20, Number(body.maxPerWeekend) || 0));
+        return d;
+      });
+      return json({ ok: true });
+    }
+    if (sub === 'aanwezigheid' && method === 'POST') {
+      const sessieId = str(body.sessieId, 40);
+      const leerlingId = str(body.leerlingId, 40);
+      const st = ['aanwezig', 'afwezig', 'afgemeld', ''].includes(body.status) ? body.status : '';
+      const rooster = await readJSON(env, KEYS.rooster);
+      const s = rooster.sessies.find((x) => x.id === sessieId);
+      if (!s || s.resourceId !== rid) throw new HttpError(403, 'niet jouw sessie');
+      if (!(s.leerlingIds || []).includes(leerlingId)) throw new HttpError(400, 'leerling zit niet in deze sessie');
+      await mutate(env, KEYS.aanwezigheid, (d) => {
+        d.perSessie[sessieId] = d.perSessie[sessieId] || {};
+        if (st) d.perSessie[sessieId][leerlingId] = st;
+        else delete d.perSessie[sessieId][leerlingId];
         return d;
       });
       return json({ ok: true });
@@ -886,8 +919,8 @@ async function handleApi(request, env) {
 
     if (sub === 'overzicht' && method === 'GET') {
       if (!eigenSchool) return json({ school: null, leerlingen: [] });
-      const [ins, rooster, config] = await Promise.all([
-        readJSON(env, KEYS.inschrijvingen), readJSON(env, KEYS.rooster), readJSON(env, KEYS.config),
+      const [ins, rooster, config, aanw] = await Promise.all([
+        readJSON(env, KEYS.inschrijvingen), readJSON(env, KEYS.rooster), readJSON(env, KEYS.config), readJSON(env, KEYS.aanwezigheid),
       ]);
       const jaarN = (config.jaarlagen || []).reduce((m, x) => (m[x.id] = x.label, m), {});
       const blokN = (config.blokken || []).reduce((m, x) => (m[x.id] = x.label, m), {});
@@ -897,7 +930,13 @@ async function handleApi(request, env) {
         .map((r) => {
           const sessies = (rooster.status === 'definitief' ? rooster.sessies : [])
             .filter((s) => (s.leerlingIds || []).includes(r.id))
-            .map((s) => ({ datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, blok: blokN[s.blokId] || '', vak: s.vak || '' }));
+            .map((s) => ({
+              datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, blok: blokN[s.blokId] || '',
+              vak: s.vak || '', begeleider: s.begeleiderNaam || '', locatie: s.locatie || '',
+              aanwezigheid: (aanw.perSessie[s.id] || {})[r.id] || '',
+            }));
+          const telling = { aanwezig: 0, afwezig: 0, afgemeld: 0 };
+          for (const s of sessies) if (s.aanwezigheid && telling[s.aanwezigheid] != null) telling[s.aanwezigheid]++;
           const vakken = [];
           for (const k of (r.keuzes || [])) for (const v of k.vakken) if (!vakken.includes(v)) vakken.push(v);
           return {
@@ -907,7 +946,7 @@ async function handleApi(request, env) {
             vakken,
             blokken: (r.keuzes || []).map((k) => (blokN[k.blokId] || '') + ' (' + k.dag + ' ' + k.dagdeel + ')'),
             mentor: r.mentor.naam || '', status: r.status,
-            ingedeeld: sessies.length, sessies,
+            ingedeeld: sessies.length, sessies, aanwezigheid: telling,
           };
         });
       return json({ school: schoolNaam, roosterStatus: rooster.status, leerlingen });
