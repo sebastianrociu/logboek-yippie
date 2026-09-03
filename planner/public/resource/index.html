@@ -40,11 +40,13 @@
     if (data.roosterStatus !== 'definitief') rp.appendChild(YP.el('div', { class: 'notice info', text: 'Het rooster is nog niet definitief. Hieronder staat de voorlopige indeling.' }));
     var list = YP.el('div', { class: 'list' });
     if (!data.sessies.length) list.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies aan jou gekoppeld.' }));
+    var DAGNAAM = { za: 'Zaterdag', zo: 'Zondag' };
+    var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' };
     data.sessies.forEach(function (s) {
       list.appendChild(YP.el('div', { class: 'list-row' }, [
         YP.el('span', { class: 'lr-main' }, [
-          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? ' - ' + s.datum : ' - datum volgt') }),
-          YP.el('span', { class: 'lr-sub', text: [s.dagdeel, s.locatie, s.aantal + ' leerling(en)'].filter(Boolean).join(' - ') })
+          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? ' - ' + s.datum : (s.dag ? ' - ' + (DAGNAAM[s.dag] || s.dag) : ' - datum volgt')) }),
+          YP.el('span', { class: 'lr-sub', text: [s.blok, DDNAAM[s.dagdeel] || s.dagdeel, s.locatie, s.aantal + ' leerling(en)'].filter(Boolean).join(' - ') })
         ])
       ]));
     });
@@ -67,7 +69,7 @@
       if (!slots.length) slotList.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen datums ingevuld.' }));
       slots.slice().sort(function (a, b) { return a.datum < b.datum ? -1 : 1; }).forEach(function (s) {
         var row = YP.el('div', { class: 'list-row' }, [
-          YP.el('span', { class: 'lr-main' }, [YP.el('span', { class: 'lr-title', text: s.datum + ' - ' + s.dagdeel })]),
+          YP.el('span', { class: 'lr-main' }, [YP.el('span', { class: 'lr-title', text: s.datum + ' - ' + ({ ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' }[s.dagdeel] || s.dagdeel) })]),
           YP.el('button', { class: 'lr-del' }, ['×'])
         ]);
         row.querySelector('.lr-del').addEventListener('click', function () {
@@ -81,7 +83,7 @@
 
     var d = YP.el('input', { class: 'input', type: 'date', style: 'width:170px' });
     var dd = YP.el('select', { style: 'width:130px' });
-    dd.innerHTML = '<option value="ochtend">Ochtend</option><option value="middag">Middag</option>';
+    dd.innerHTML = '<option value="ochtend">Ochtend</option><option value="middag">Middag</option><option value="avond">Avond</option>';
     var add = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, ['Datum erbij']);
     add.addEventListener('click', function () {
       if (!d.value) return;

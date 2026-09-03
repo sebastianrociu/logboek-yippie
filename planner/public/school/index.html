@@ -49,10 +49,11 @@
     if (!d.leerlingen.length) {
       html += '<div class="card card-pad"><div class="empty">Nog geen inschrijvingen van je school.</div></div>';
     } else {
-      html += '<div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Leerling</th><th>Jaarlaag</th><th>Vakken</th><th>Mentor</th><th>Status</th><th>Sessies</th></tr></thead><tbody>';
+      html += '<div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Leerling</th><th>Jaarlaag</th><th>Vakken</th><th>Blokken</th><th>Mentor</th><th>Status</th><th>Sessies</th></tr></thead><tbody>';
       d.leerlingen.forEach(function (l) {
-        var ses = l.sessies.map(function (s) { return esc(s.vak) + (s.datum ? ' (' + esc(s.datum) + ')' : ''); }).join('<br>') || '<span class="muted">nog niet ingedeeld</span>';
-        html += '<tr><td><span class="lr-title">' + esc(l.leerling) + '</span></td><td>' + esc(l.jaarlaag) + '</td><td>' + esc(l.vakken.join(', ')) + '</td><td>' + esc(l.mentor || '-') + '</td><td>' + esc(l.status) + '</td><td>' + ses + '</td></tr>';
+        var ses = l.sessies.map(function (s) { return esc(s.vak) + (s.datum ? ' (' + esc(s.datum) + ')' : (s.dag ? ' (' + esc(s.dag) + ')' : '')); }).join('<br>') || '<span class="muted">nog niet ingedeeld</span>';
+        var blk = (l.blokken || []).map(esc).join('<br>') || '-';
+        html += '<tr><td><span class="lr-title">' + esc(l.leerling) + '</span></td><td>' + esc(l.jaarlaag) + '</td><td>' + esc(l.vakken.join(', ')) + '</td><td>' + blk + '</td><td>' + esc(l.mentor || '-') + '</td><td>' + esc(l.status) + '</td><td>' + ses + '</td></tr>';
       });
       html += '</tbody></table></div></div>';
     }

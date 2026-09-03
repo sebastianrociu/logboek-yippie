@@ -7,9 +7,10 @@ Uit de opdracht. Kort en concreet; graag checken waar aannames staan.
 **Aanpak: greedy one-pass, geen solver, geen achtergrondproces.**
 
 1. Bundel inschrijvingen tot **sessiegroepen** op de sleutel
-   `school | jaarlaag | vak | periode | dagdeel` (dit doet de groepeer-hint nu al,
-   client-side). Splits groepen groter dan `groepMax`, markeer groepen kleiner
-   dan `groepMin` als knelpunt.
+   `school | jaarlaag | blok | dag | dagdeel | vak (genormaliseerd)` (dit doet de
+   groepeer-hint nu al, client-side). Splits groepen groter dan `groepMax`,
+   markeer groepen kleiner dan `groepMin` als knelpunt. Een leerling die per blok
+   andere vakken of dagen kiest, telt in elke bijbehorende groep mee.
 2. **Sorteer de groepen op schaarste**: eerst de groepen waarvoor de minste
    gekwalificeerde + beschikbare begeleiders bestaan. Zo lopen de moeilijke
    gevallen niet vast op capaciteit die al vergeven is.
@@ -25,7 +26,7 @@ honderden x tientallen = enkele duizenden vergelijkingen, ruim onder de
 CPU-limiet (richttijd < 50 ms). De zwaardere sortering en toewijzing draaien
 alleen wanneer de planner op "genereer voorstel" klikt, niet bij elke request.
 Geen wachtrij, geen cron voor het rekenen zelf. Zou het ooit te groot worden, dan
-knippen we per periode of per school in losse runs.
+knippen we per blok of per school in losse runs.
 
 ## 2. KV-keys en concurrency-risico's
 

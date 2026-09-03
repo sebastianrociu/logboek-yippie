@@ -35,8 +35,9 @@
         <table class="tbl"><tbody>
           <tr><th>School</th><td id="v-school">-</td></tr>
           <tr><th>Jaarlaag</th><td id="v-jaarlaag">-</td></tr>
-          <tr><th>Vakken</th><td id="v-vakken">-</td></tr>
         </tbody></table>
+        <div id="v-keuzes" class="list" style="margin-top:8px"></div>
+        <p id="v-toel" class="hint hidden"></p>
       </div>
     </div>
 
@@ -87,21 +88,36 @@
       show('err');
       return;
     }
+    var DAGNAAM = { za: 'Zaterdag', zo: 'Zondag' };
+    var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' };
     var i = data.inschrijving;
     $('v-naam').textContent = i.leerling;
     $('v-status').textContent = i.status;
     $('v-school').textContent = i.school || '-';
     $('v-jaarlaag').textContent = i.jaarlaag || '-';
-    $('v-vakken').textContent = i.vakken.join(', ') || '-';
+
+    var kl = $('v-keuzes'); kl.innerHTML = '';
+    (i.keuzes || []).forEach(function (k) {
+      kl.appendChild(YP.el('div', { class: 'list-row' }, [
+        YP.el('span', { class: 'lr-main' }, [
+          YP.el('span', { class: 'lr-title', text: k.blok || '(blok)' }),
+          YP.el('span', { class: 'lr-sub', text: (DAGNAAM[k.dag] || k.dag) + ' ' + (DDNAAM[k.dagdeel] || k.dagdeel) + ' - ' + (k.vakken || []).join(', ') })
+        ])
+      ]));
+    });
+    if (!(i.keuzes || []).length) kl.appendChild(YP.el('div', { class: 'empty', text: 'Geen blokken gekozen.' }));
+    $('v-toel').textContent = i.toelichting ? ('Toelichting: ' + i.toelichting) : '';
+    $('v-toel').classList.toggle('hidden', !i.toelichting);
 
     $('v-rooster-concept').classList.toggle('hidden', data.roosterStatus === 'definitief');
     var list = $('v-sessies'); list.innerHTML = '';
     if (data.roosterStatus === 'definitief' && !data.sessies.length) $('v-geen').classList.remove('hidden');
     data.sessies.forEach(function (s) {
+      var titel = s.vak + (s.datum ? ' - ' + s.datum : (s.dag ? ' - ' + (DAGNAAM[s.dag] || s.dag) : ''));
       var row = YP.el('div', { class: 'list-row' }, [
         YP.el('span', { class: 'lr-main' }, [
-          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? ' - ' + s.datum : '') }),
-          YP.el('span', { class: 'lr-sub', text: [s.dagdeel, s.locatie, s.begeleider].filter(Boolean).join(' - ') })
+          YP.el('span', { class: 'lr-title', text: titel }),
+          YP.el('span', { class: 'lr-sub', text: [s.blok, DDNAAM[s.dagdeel] || s.dagdeel, s.locatie, s.begeleider].filter(Boolean).join(' - ') })
         ]),
         YP.el('button', { class: 'btn btn-ghost btn-sm', 'data-s': s.id }, ['Afmelden'])
       ]);

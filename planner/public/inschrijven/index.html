@@ -21,66 +21,62 @@
     <div class="card">
       <div class="card-head"><h2>1. School en niveau</h2></div>
       <div class="card-pad">
-        <div class="field">
-          <label for="f-school">School</label>
-          <select id="f-school" required><option value="">Kies je school</option></select>
-        </div>
-        <div class="field">
-          <label for="f-jaarlaag">Jaarlaag</label>
-          <select id="f-jaarlaag" required><option value="">Kies je jaarlaag</option></select>
-        </div>
-        <div class="field">
-          <label>Vak of vakken</label>
-          <div class="chipset" id="f-vakken"></div>
-          <p class="hint">Meerdere vakken mag.</p>
+        <div class="grid cols-2">
+          <div class="field">
+            <label for="f-school">School</label>
+            <select id="f-school" required><option value="">Kies je school</option></select>
+          </div>
+          <div class="field">
+            <label for="f-jaarlaag">Jaarlaag</label>
+            <select id="f-jaarlaag" required><option value="">Kies je jaarlaag</option></select>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>2. Wanneer schikt het?</h2></div>
+      <div class="card-head"><h2>2. Blokken en dagen</h2></div>
       <div class="card-pad">
-        <div class="field">
-          <label>Voorkeursdagen</label>
-          <div class="chipset" id="f-dagen">
-            <label class="chip-check"><input type="checkbox" value="za"><span>Zaterdag</span></label>
-            <label class="chip-check"><input type="checkbox" value="zo"><span>Zondag</span></label>
-            <label class="chip-check"><input type="checkbox" value="wk"><span>Doordeweeks</span></label>
-          </div>
-        </div>
-        <div class="field">
-          <label>Dagdeel</label>
-          <div class="chipset" id="f-dagdelen">
-            <label class="chip-check"><input type="checkbox" value="ochtend"><span>Ochtend</span></label>
-            <label class="chip-check"><input type="checkbox" value="middag"><span>Middag</span></label>
-          </div>
-        </div>
-        <div class="field" id="f-periode-wrap">
-          <label for="f-periode">Periode</label>
-          <select id="f-periode"><option value="">Geen voorkeur</option></select>
-        </div>
-        <div class="field">
-          <label for="f-toelichting">Toelichting (niet verplicht)</label>
-          <textarea id="f-toelichting" maxlength="500" placeholder="Bijvoorbeeld: niet op 25 januari, of alleen de eerste helft van de periode."></textarea>
-        </div>
+        <p class="notice info" style="margin-bottom:14px">
+          De trainingen zijn in het <b>weekend</b> en in de <b>schoolvakanties</b>. Kies per blok een dag en
+          dagdeel, en de vakken die je in dat blok wilt volgen. Je hoeft niet alle blokken te kiezen, en de
+          keuze mag per blok verschillen.
+        </p>
+        <div class="stack" id="f-blokken"></div>
       </div>
     </div>
 
     <div class="card">
       <div class="card-head"><h2>3. Contactgegevens</h2></div>
       <div class="card-pad">
-        <div class="grid cols-2">
-          <div class="field"><label for="f-ln">Naam leerling</label><input class="input" id="f-ln" required></div>
-          <div class="field"><label for="f-lt">Telefoon leerling</label><input class="input" id="f-lt" inputmode="tel"></div>
-          <div class="field"><label for="f-le">E-mail leerling</label><input class="input" type="email" id="f-le"></div>
-          <div class="field"><label for="f-on">Naam ouder of verzorger</label><input class="input" id="f-on"></div>
-          <div class="field"><label for="f-oe">E-mail ouder of verzorger</label><input class="input" type="email" id="f-oe"></div>
-          <div class="field"><label for="f-ot">Telefoon ouder of verzorger</label><input class="input" id="f-ot" inputmode="tel"></div>
+        <div class="split2">
+          <div class="subcard">
+            <h3>Leerling</h3>
+            <div class="field"><label for="f-ln">Naam</label><input class="input" id="f-ln" autocomplete="name" required></div>
+            <div class="field"><label for="f-le">E-mailadres</label><input class="input" type="email" id="f-le" autocomplete="email"></div>
+            <div class="field"><label for="f-lt">Telefoon</label><input class="input" id="f-lt" inputmode="tel" autocomplete="tel"></div>
+          </div>
+          <div class="subcard">
+            <h3>Ouder of verzorger</h3>
+            <div class="field"><label for="f-on">Naam</label><input class="input" id="f-on"></div>
+            <div class="field"><label for="f-oe">E-mailadres</label><input class="input" type="email" id="f-oe"></div>
+            <div class="field"><label for="f-ot">Telefoon</label><input class="input" id="f-ot" inputmode="tel"></div>
+          </div>
         </div>
-        <p class="hint">Vul minstens een e-mailadres in (leerling of ouder). Daar sturen we de indeling naartoe.</p>
-        <div class="grid cols-2" style="margin-top:8px">
-          <div class="field"><label for="f-mn">Mentor of contactpersoon op school</label><input class="input" id="f-mn"></div>
-          <div class="field"><label for="f-me">E-mail mentor</label><input class="input" type="email" id="f-me"></div>
+        <p class="hint" style="margin-bottom:14px">Vul minstens een e-mailadres in (leerling of ouder). Daar sturen we de indeling naartoe.</p>
+
+        <div class="subcard">
+          <h3>Mentor of contactpersoon op school</h3>
+          <div class="grid cols-2">
+            <div class="field"><label for="f-mn">Naam</label><input class="input" id="f-mn"></div>
+            <div class="field"><label for="f-me">E-mailadres</label><input class="input" type="email" id="f-me"></div>
+          </div>
+          <p class="hint">Zo kan de mentor meekijken met de deelname van deze leerling.</p>
+        </div>
+
+        <div class="field" style="margin-top:16px;margin-bottom:0">
+          <label for="f-toelichting">Toelichting (niet verplicht)</label>
+          <textarea id="f-toelichting" maxlength="500" placeholder="Bijvoorbeeld: niet beschikbaar op 20 december, of alleen de eerste helft van een blok."></textarea>
         </div>
       </div>
     </div>
@@ -98,6 +94,7 @@
     <span class="badge ok">Gelukt</span>
     <h2 style="margin-top:10px">Je inschrijving is binnen</h2>
     <p class="card-sub">We plannen de sessies in en sturen de indeling naar het opgegeven e-mailadres. Bewaar onderstaande link; daarmee zie je later je persoonlijke indeling en kun je je afmelden voor een sessie.</p>
+    <div id="done-sum" class="notice info" style="margin-top:12px"></div>
     <div class="field" style="margin-top:12px">
       <label for="d-link">Jouw persoonlijke link</label>
       <input class="input mono" id="d-link" readonly>
@@ -117,6 +114,9 @@
 (function () {
   var cfg = null;
   var $ = function (id) { return document.getElementById(id); };
+  var DAGNAAM = { za: 'Zaterdag', zo: 'Zondag' };
+  var DAGDELEN = ['ochtend', 'middag', 'avond'];
+  var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' };
 
   function opt(sel, list, labelKey) {
     list.forEach(function (x) {
@@ -125,15 +125,91 @@
       sel.appendChild(o);
     });
   }
-  function chip(host, value, label) {
-    var l = YP.el('label', { class: 'chip-check' }, [
-      YP.el('input', { type: 'checkbox', value: value }),
-      YP.el('span', { text: label })
+
+  // ---- blok-kaart met week-widget + vakken --------------------------------
+  function blokCard(blok) {
+    var dagen = (blok.dagen && blok.dagen.length) ? blok.dagen : ['za', 'zo'];
+    var card = YP.el('div', { class: 'blokcard', 'data-blok': blok.id });
+
+    var head = YP.el('label', { class: 'bc-head' }, [
+      YP.el('input', { type: 'checkbox', 'data-role': 'on' }),
+      YP.el('span', { class: 'min-w-0' }, [
+        YP.el('span', { class: 'bc-t', text: blok.label }),
+        YP.el('span', { class: 'bc-s', text: dagen.map(function (d) { return DAGNAAM[d]; }).join(' of ') + (blok.van ? ' - ' + blok.van + ' t/m ' + blok.tot : '') })
+      ])
     ]);
-    host.appendChild(l);
+    card.appendChild(head);
+
+    var body = YP.el('div', { class: 'bc-body', hidden: 'hidden' });
+
+    // week-widget: dagen als kolommen, ochtend/middag/avond als rijen
+    var wkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Wanneer in dit blok?' })]);
+    var wk = YP.el('div', { class: 'weekgrid' });
+    dagen.forEach(function (d) {
+      var col = YP.el('div', { class: 'weekcol' }, [YP.el('div', { class: 'wc-day', text: DAGNAAM[d] })]);
+      DAGDELEN.forEach(function (dd) {
+        var cell = YP.el('label', { class: 'weekcell' }, [
+          YP.el('input', { type: 'radio', name: 'slot_' + blok.id, value: d + '|' + dd }),
+          YP.el('span', { text: DDNAAM[dd] })
+        ]);
+        col.appendChild(cell);
+      });
+      wk.appendChild(col);
+    });
+    wkField.appendChild(wk);
+    body.appendChild(wkField);
+
+    // vakken: alle bekende vakken + zelf toevoegen
+    var vkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Vakken voor dit blok' })]);
+    var vkSet = YP.el('div', { class: 'chipset', 'data-role': 'vakken' });
+    (cfg.vakken || []).forEach(function (v) { vkSet.appendChild(vakChip(v.naam)); });
+    vkField.appendChild(vkSet);
+    var addRow = YP.el('div', { class: 'row', style: 'margin-top:10px' });
+    var vkIn = YP.el('input', { class: 'input', placeholder: 'Ander vak (typ en voeg toe)', style: 'flex:1;min-width:160px' });
+    var vkBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: 'Vak toevoegen' });
+    function addCustom() {
+      var naam = vkIn.value.trim();
+      if (!naam) return;
+      var bestaat = Array.prototype.some.call(vkSet.querySelectorAll('input'), function (i) { return i.value.toLowerCase() === naam.toLowerCase(); });
+      if (!bestaat) { var c = vakChip(naam); vkSet.appendChild(c); c.querySelector('input').checked = true; }
+      else { Array.prototype.forEach.call(vkSet.querySelectorAll('input'), function (i) { if (i.value.toLowerCase() === naam.toLowerCase()) i.checked = true; }); }
+      vkIn.value = '';
+    }
+    vkBtn.addEventListener('click', addCustom);
+    vkIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } });
+    addRow.appendChild(vkIn); addRow.appendChild(vkBtn);
+    vkField.appendChild(addRow);
+    vkField.appendChild(YP.el('p', { class: 'hint', text: 'Staat je vak er niet bij? Typ het en klik op "Vak toevoegen".' }));
+    body.appendChild(vkField);
+
+    card.appendChild(body);
+
+    head.querySelector('input').addEventListener('change', function (e) {
+      body.hidden = !e.target.checked;
+      card.classList.toggle('on', e.target.checked);
+    });
+    return card;
   }
-  function checked(host) {
-    return Array.prototype.map.call(host.querySelectorAll('input:checked'), function (i) { return i.value; });
+
+  function vakChip(naam) {
+    return YP.el('label', { class: 'chip-check' }, [
+      YP.el('input', { type: 'checkbox', value: naam }),
+      YP.el('span', { text: naam })
+    ]);
+  }
+
+  function readBlokken() {
+    var out = [];
+    Array.prototype.forEach.call($('f-blokken').querySelectorAll('.blokcard'), function (card) {
+      if (!card.querySelector('[data-role="on"]').checked) return;
+      var blokId = card.getAttribute('data-blok');
+      var slot = card.querySelector('input[name="slot_' + blokId + '"]:checked');
+      var vakken = Array.prototype.map.call(card.querySelectorAll('[data-role="vakken"] input:checked'), function (i) { return i.value; });
+      var dag = '', dagdeel = '';
+      if (slot) { var p = slot.value.split('|'); dag = p[0]; dagdeel = p[1]; }
+      out.push({ blokId: blokId, dag: dag, dagdeel: dagdeel, vakken: vakken });
+    });
+    return out;
   }
 
   async function load() {
@@ -143,38 +219,39 @@
       $('loader').innerHTML = '<div class="notice bad">Kon het formulier niet laden. Probeer het later opnieuw.</div>';
       return;
     }
-    if (!cfg.scholen.length || !cfg.vakken.length || !cfg.jaarlagen.length) {
+    if (!cfg.scholen.length || !cfg.jaarlagen.length || !(cfg.blokken || []).length) {
       $('loader').innerHTML = '<div class="notice warn">Het inschrijven is nog niet opengezet. Neem contact op met Yippie voor de klas.</div>';
       return;
     }
     opt($('f-school'), cfg.scholen, 'naam');
     opt($('f-jaarlaag'), cfg.jaarlagen, 'label');
-    opt($('f-periode'), cfg.periodes, 'label');
-    if (!cfg.periodes.length) $('f-periode-wrap').classList.add('hidden');
-    cfg.vakken.forEach(function (v) { chip($('f-vakken'), v.id, v.naam); });
+    cfg.blokken.forEach(function (b) { $('f-blokken').appendChild(blokCard(b)); });
     $('loader').classList.add('hidden');
     $('form').classList.remove('hidden');
   }
 
+  function showErr(m) { var e = $('f-err'); e.textContent = m; e.classList.remove('hidden'); e.scrollIntoView({ block: 'center' }); }
+
   $('form').addEventListener('submit', async function (e) {
     e.preventDefault();
-    var err = $('f-err'); err.classList.add('hidden');
+    $('f-err').classList.add('hidden');
+    var blokken = readBlokken();
     var payload = {
       schoolId: $('f-school').value,
       jaarlaagId: $('f-jaarlaag').value,
-      vakIds: checked($('f-vakken')),
-      voorkeur: {
-        dagen: checked($('f-dagen')),
-        dagdelen: checked($('f-dagdelen')),
-        periodeId: $('f-periode').value,
-        toelichting: $('f-toelichting').value
-      },
+      keuzes: blokken,
+      toelichting: $('f-toelichting').value,
       leerling: { naam: $('f-ln').value, email: $('f-le').value, tel: $('f-lt').value },
       ouder: { naam: $('f-on').value, email: $('f-oe').value, tel: $('f-ot').value },
       mentor: { naam: $('f-mn').value, email: $('f-me').value }
     };
     if (!payload.schoolId || !payload.jaarlaagId) { showErr('Kies een school en een jaarlaag.'); return; }
-    if (!payload.vakIds.length) { showErr('Kies minstens een vak.'); return; }
+    if (!blokken.length) { showErr('Kies minstens een blok (vink het aan).'); return; }
+    for (var i = 0; i < blokken.length; i++) {
+      var k = blokken[i];
+      if (!k.dag || !k.dagdeel) { showErr('Kies bij elk aangevinkt blok een dag en dagdeel.'); return; }
+      if (!k.vakken.length) { showErr('Kies bij elk aangevinkt blok minstens een vak.'); return; }
+    }
     if (!payload.leerling.naam.trim()) { showErr('Vul de naam van de leerling in.'); return; }
     if (!payload.leerling.email.trim() && !payload.ouder.email.trim()) { showErr('Vul een e-mailadres in (leerling of ouder).'); return; }
 
@@ -184,6 +261,10 @@
       var link = location.origin + '/mijn/?token=' + encodeURIComponent(r.token);
       $('d-link').value = link;
       $('d-open').href = link;
+      var blokN = {}; (cfg.blokken || []).forEach(function (b) { blokN[b.id] = b.label; });
+      $('done-sum').innerHTML = '<b>Je keuze:</b><br>' + blokken.map(function (k) {
+        return YP.esc(blokN[k.blokId] || '') + ' - ' + YP.esc(DAGNAAM[k.dag] || k.dag) + ' ' + YP.esc(k.dagdeel) + ' - ' + YP.esc(k.vakken.join(', '));
+      }).join('<br>');
       $('form').classList.add('hidden');
       $('done').classList.remove('hidden');
       window.scrollTo(0, 0);
@@ -193,11 +274,9 @@
     }
   });
 
-  function showErr(m) { var e = $('f-err'); e.textContent = m; e.classList.remove('hidden'); e.scrollIntoView({ block: 'center' }); }
-
   $('d-copy').addEventListener('click', function () {
     var i = $('d-link'); i.select();
-    navigator.clipboard && navigator.clipboard.writeText(i.value).then(function () { YP.toast('Link gekopieerd', 'ok'); });
+    if (navigator.clipboard) navigator.clipboard.writeText(i.value).then(function () { YP.toast('Link gekopieerd', 'ok'); });
   });
 
   load();

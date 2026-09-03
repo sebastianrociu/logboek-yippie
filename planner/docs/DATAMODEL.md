@@ -13,10 +13,15 @@ Elk object heeft `_rev` (integer, optimistic lock), `_at` (ISO-tijd) en `_by`
   "scholen":   [{ "id": "sch_lyceum", "naam": "Stedelijk Lyceum" }],
   "vakken":    [{ "id": "vak_wi", "naam": "Wiskunde" }],
   "jaarlagen": [{ "id": "jl_3h", "label": "3 havo" }],
-  "periodes":  [{ "id": "p_jan", "label": "Januari - maart", "van": "2027-01-10", "tot": "2027-03-28" }],
+  "blokken":   [{ "id": "blok1", "label": "Blok 1 (na de herfstvakantie)",
+                  "van": "2026-10-26", "tot": "2026-12-13", "dagen": ["za", "zo"] }],
   "instellingen": { "groepMin": 4, "groepMax": 12 }
 }
 ```
+
+Trainingen lopen in het weekend en in de vakanties. Een blok is een aaneengesloten
+periode; `dagen` zegt welke weekenddagen (`za` / `zo`) in dat blok worden
+aangeboden. Leerlingen kiezen per blok een dag en dagdeel.
 
 `id` wordt uit de naam geslugd (kleine letters, `_`). Publiek leesbaar deel via
 `GET /api/config-public` (zonder instellingen).
@@ -54,13 +59,11 @@ terugzet.
     "status": "nieuw",                       // nieuw | ingepland | afgerond | geannuleerd
     "schoolId": "sch_lyceum",
     "jaarlaagId": "jl_3h",
-    "vakIds": ["vak_wi"],
-    "voorkeur": {
-      "dagen": ["za"],                       // za | zo | wk
-      "dagdelen": ["ochtend"],               // ochtend | middag
-      "periodeId": "p_jan",
-      "toelichting": "vrije tekst, max 500"
-    },
+    "keuzes": [
+      { "blokId": "blok1", "dag": "za", "dagdeel": "ochtend",
+        "vakken": ["Wiskunde", "Aardrijkskunde"] }
+    ],
+    "toelichting": "vrije tekst, max 500",
     "leerling": { "naam": "Sanne de Vries", "email": "", "tel": "" },
     "ouder":    { "naam": "", "email": "ouder@example.test", "tel": "" },
     "mentor":   { "naam": "M. de Wit", "email": "mentor@lyceum.test" }
@@ -69,8 +72,12 @@ terugzet.
 }
 ```
 
-Alleen naam + contact + jaarlaag/vak worden opgeslagen. Geen leerlingnummer
-(AVG, zie hoofd-`CLAUDE.md`).
+Per gekozen blok één `keuze` met een dag (`za`/`zo`), een dagdeel
+(`ochtend`/`middag`/`avond`) en de vakken voor dat blok. `vakken` zijn vrije
+namen (strings): de bekende vakken plus wat de leerling zelf typt. Voor groeperen
+worden ze genormaliseerd (trim + lowercase), zodat "wiskunde" en "Wiskunde"
+samenvallen. Alleen naam + contact + jaarlaag/vak worden opgeslagen, geen
+leerlingnummer (AVG, zie hoofd-`CLAUDE.md`).
 
 ## `rooster`
 
@@ -80,9 +87,9 @@ Alleen naam + contact + jaarlaag/vak worden opgeslagen. Geen leerlingnummer
   "status": "concept",                       // concept | definitief
   "sessies": [{
     "id": "s_ab12cd",
-    "vakId": "vak_wi", "jaarlaagId": "jl_3h", "schoolId": "sch_lyceum",
-    "periodeId": "p_jan", "dagdeel": "ochtend",
-    "datum": "2027-01-17", "locatie": "Lokaal 2",
+    "vak": "Wiskunde", "jaarlaagId": "jl_3h", "schoolId": "sch_lyceum",
+    "blokId": "blok1", "dag": "za", "dagdeel": "ochtend",
+    "datum": "2026-11-07", "locatie": "Lokaal 2",
     "resourceId": "res_1", "begeleiderNaam": "K. Jansen",
     "leerlingIds": ["a1b2c3", "d4e5f6"],
     "min": 4, "max": 12
@@ -90,6 +97,10 @@ Alleen naam + contact + jaarlaag/vak worden opgeslagen. Geen leerlingnummer
   "conflicten": []
 }
 ```
+
+Een sessie hoort bij precies één groep: `schoolId | jaarlaagId | blokId | dag |
+dagdeel | vak (genormaliseerd)`. `datum` is de concrete kalenderdatum die de
+planner invult; `dag` blijft de weekenddag-voorkeur.
 
 `GET /api/mijn` en `GET /api/school/overzicht` tonen sessies pas als
 `status === "definitief"`.
