@@ -89,3 +89,12 @@ Indicatief, één ontwikkelaar met AI-ondersteuning:
   (raakt alleen `wrangler.toml` `name` en de docs).
 - **`schooljaar`** is (net als in het logboek) niet in de app instelbaar; kan als
   veld in `config` als dat nodig blijkt.
+- **`/mijn/` ("Mijn indeling")** hoort bij de opdracht: functionele eis 4 ("een
+  persoonlijke pagina/link") en de rol Leerling/ouder ("eigen indeling inzien,
+  afmelden voor een sessie"). Toegevoegde waarde nu: zonder account zien wat je
+  hebt gekozen, je definitieve sessies (datum, dagdeel, locatie, begeleider) en
+  je zelf afmelden - dat scheelt Yippie mailwerk. Wordt in fase 2 sterker met de
+  wijzigingsnotificaties.
+- **Inloggen** kan met wachtwoord óf met een persoonlijke link (`/?login=<token>`,
+  30 dagen). De link is de handigste route voor mentoren/begeleiders; hij zet
+  een gewone sessie van 12 uur.

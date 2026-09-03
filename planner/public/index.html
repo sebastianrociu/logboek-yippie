@@ -15,22 +15,21 @@
 <header id="yp-topbar" data-title="Yippie voor de klas" data-sub="Plannings- en inschrijfsysteem"></header>
 
 <main class="wrap wrap-narrow">
+  <div class="welkom">
+    <h2>Welkom bij Yippie voor de klas</h2>
+    <p>Wij geven in het weekend en in de vakanties examentraining en bijspijksessies in kleine groepjes,
+      per vak en per niveau, met een vaste begeleider. Van inschrijving tot indeling loopt alles via deze plek.</p>
+  </div>
   <div class="stack">
     <div class="card card-pad">
       <h2>Waar wil je heen?</h2>
-      <p class="card-sub">Inschrijven kan zonder account. De andere rollen loggen in.</p>
-      <div class="grid cols-2" style="margin-top:16px">
-        <a class="btn btn-primary btn-block" href="/inschrijven/">Inschrijven</a>
-        <button class="btn btn-ghost btn-block" data-login="beheerder">Beheer (Yippie)</button>
-        <button class="btn btn-ghost btn-block" data-login="resource">Begeleider</button>
-        <button class="btn btn-ghost btn-block" data-login="mentor">School of mentor</button>
+      <div class="stack" style="margin-top:16px;gap:10px">
+        <a class="btn btn-primary btn-block" href="/inschrijven/">Inschrijven <span style="font-weight:600;opacity:.85">- leerling of ouder</span></a>
+        <button class="btn btn-ghost btn-block" data-login="mentor">School of mentor <span style="font-weight:600;opacity:.7">- het overzicht van je leerlingen</span></button>
+        <button class="btn btn-ghost btn-block" data-login="resource">Begeleider <span style="font-weight:600;opacity:.7">- je beschikbaarheid en rooster</span></button>
+        <button class="btn btn-ghost btn-block" data-login="beheerder">Beheer <span style="font-weight:600;opacity:.7">- Yippie zelf</span></button>
       </div>
-      <p class="hint">Een persoonlijke link voor je indeling gekregen? Open die, of ga naar <a href="/mijn/">Mijn indeling</a>.</p>
-    </div>
-
-    <div class="notice info">
-      Yippie voor de klas geeft examentrainingen en bijspijksessies in het weekend. Leerlingen
-      schrijven zich in per vak; Yippie maakt daar groepen van met een begeleider erbij.
+      <p class="hint">Een persoonlijke link gekregen? Open die. Voor je indeling: <a href="/mijn/">Mijn indeling</a>.</p>
     </div>
   </div>
 </main>
@@ -82,6 +81,18 @@
   var params = new URLSearchParams(location.search);
   var next = params.get('next') || '';
   var ROUTE = { beheerder: '/beheer/', resource: '/resource/', mentor: '/school/' };
+
+  // Persoonlijke inloglink: /?login=<token>
+  var loginTok = params.get('login');
+  if (loginTok) {
+    document.body.innerHTML = '<main class="wrap wrap-narrow"><div class="card card-pad"><div class="empty" id="ll-msg">Inloggen...</div></div></main>';
+    YP.api.post('/api/auth/link', { token: loginTok }).then(function (r) {
+      location.replace(ROUTE[r.rol] || '/');
+    }).catch(function (e) {
+      document.getElementById('ll-msg').innerHTML = '<div class="notice bad">' + YP.esc(e.message || 'Deze inloglink werkt niet meer.') + '</div><p class="hint" style="margin-top:10px"><a href="/">Naar het inlogscherm</a></p>';
+    });
+    return;
+  }
   var SUB = {
     beheerder: 'Beheer: scholen, vakken, begeleiders, roosteren en rapportage.',
     resource: 'Begeleider: je eigen beschikbaarheid en je eigen rooster.',

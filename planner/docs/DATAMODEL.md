@@ -87,8 +87,10 @@ terugzet.
 }
 ```
 
-Per gekozen blok één `keuze` met een dag (`za`/`zo`), een dagdeel
-(`ochtend`/`middag`) en de vakken voor dat blok. `vakken` zijn vrije
+Eén `keuze` per gekozen **moment** binnen een blok: dag (`za`/`zo`) + dagdeel
+(`ochtend`/`middag`). Een leerling mag meerdere momenten per blok kiezen (bijv.
+za-ochtend én zo-middag); dat zijn dan meerdere `keuze`-entries met hetzelfde
+`blokId` en dezelfde `vakken`. `vakken` zijn vrije
 namen (strings): de bekende vakken plus wat de leerling zelf typt. Voor groeperen
 worden ze genormaliseerd (trim + lowercase), zodat "wiskunde" en "Wiskunde"
 samenvallen. Alleen naam + contact + jaarlaag/vak worden opgeslagen, geen
@@ -146,13 +148,17 @@ huidige rooster, zonder toe te wijzen. `conflicten` zijn nu objecten met
     "naam": "Beheerder",
     "schoolId": null,                         // gevuld bij rol mentor
     "resourceId": null,                       // gevuld bij rol resource
-    "salt": "base64url", "hash": "base64url"  // PBKDF2-SHA256, 210k iteraties
+    "salt": "base64url", "hash": "base64url", // PBKDF2-SHA256, 210k iteraties
+    "loginTokenHash": "sha256hex",            // persoonlijke inloglink /?login=<token>
+    "loginTokenExp": 1730000000000            // 30 dagen; beheer maakt een nieuwe
   }]
 }
 ```
 
 Eerste beheerder komt uit de secrets `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASS` bij de
-eerste geslaagde login met dat adres.
+eerste geslaagde login met dat adres. Inloggen kan met wachtwoord (`POST
+/api/login`) of met een persoonlijke inloglink (`POST /api/auth/link`, aangeroepen
+door `/?login=<token>` op de landingspagina).
 
 ## `aanwezigheid` (fase 3, nu leeg geïnitialiseerd)
 

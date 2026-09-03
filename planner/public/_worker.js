@@ -9,7 +9,7 @@
    inschrijvingen (append) zodat gelijktijdige schrijfacties niet verdwijnen.
    ========================================================================== */
 
-const VERSION = '2026-09-04.7';
+const VERSION = '2026-09-05.1';
 
 const KEYS = {
   config: 'config',
@@ -298,6 +298,16 @@ function requireRole(auth, rol) {
   if (!auth || auth.rol !== rol) throw new HttpError(403, 'geen toegang');
   return auth;
 }
+// Sessiecookie zetten voor een gebruiker (na wachtwoord of persoonlijke link).
+async function sessieAntwoord(env, user, secure) {
+  const maxAge = 60 * 60 * 12;
+  const token = await signSession(env, {
+    uid: user.id, rol: user.rol, naam: user.naam,
+    sid: user.schoolId || null, rid: user.resourceId || null,
+    exp: Date.now() + maxAge * 1000,
+  });
+  return json({ rol: user.rol, naam: user.naam }, 200, { 'set-cookie': cookieHeader(token, maxAge, secure) });
+}
 
 /* ---------- stub-mail --------------------------------------------------- */
 // Fase 1: geen echte verzending. Log alleen het type; geen e-mailadres, token of
@@ -340,9 +350,10 @@ function validateInschrijving(body, config) {
   const ouderEmail = cleanEmail(body.ouder && body.ouder.email);
   const leerlingEmail = cleanEmail(body.leerling && body.leerling.email);
 
-  // keuzes: één per gekozen blok, met dag + dagdeel + vakken
+  // keuzes: één per (blok, dag, dagdeel) - een leerling mag meerdere momenten
+  // per blok kiezen (bijv. za ochtend + zo middag).
   const keuzesIn = Array.isArray(body.keuzes) ? body.keuzes : [];
-  const keuzes = [];
+  const perSlot = new Map();
   for (const k of keuzesIn) {
     const blok = blokById.get(str(k && k.blokId, 40));
     if (!blok) continue;
@@ -355,18 +366,14 @@ function validateInschrijving(body, config) {
       .map(vakNaam).filter((v) => v && !seen.has(vakKey(v)) && seen.add(vakKey(v)))
       .slice(0, 15);
     if (!vakken.length) continue;
-    keuzes.push({ blokId: blok.id, dag, dagdeel, vakken });
+    const sleutel = blok.id + '|' + dag + '|' + dagdeel;
+    if (perSlot.has(sleutel)) {
+      const cur = perSlot.get(sleutel);
+      const s2 = new Set(cur.vakken.map(vakKey));
+      for (const v of vakken) if (!s2.has(vakKey(v))) { cur.vakken.push(v); s2.add(vakKey(v)); }
+    } else perSlot.set(sleutel, { blokId: blok.id, dag, dagdeel, vakken });
   }
-  // dubbele blok-keuzes samenvoegen (één keuze per blok)
-  const perBlok = new Map();
-  for (const k of keuzes) {
-    if (perBlok.has(k.blokId)) {
-      const cur = perBlok.get(k.blokId);
-      const seen = new Set(cur.vakken.map(vakKey));
-      for (const v of k.vakken) if (!seen.has(vakKey(v))) { cur.vakken.push(v); seen.add(vakKey(v)); }
-    } else perBlok.set(k.blokId, k);
-  }
-  const keuzesClean = Array.from(perBlok.values());
+  const keuzesClean = Array.from(perSlot.values()).slice(0, 24);
 
   const fouten = [];
   if (!schoolId && !schoolVrij) fouten.push('Kies een school of vul een schoolnaam in.');
@@ -712,14 +719,19 @@ async function handleApi(request, env) {
     if (!ok) throw new HttpError(401, 'onjuiste inloggegevens');
     await rateLimitReset(env, 'login-acc', email); // gelukt -> teller wissen
     await rateLimitReset(env, 'login-ip', clientIp);
+    return await sessieAntwoord(env, user, secure);
+  }
 
-    const maxAge = 60 * 60 * 12;
-    const token = await signSession(env, {
-      uid: user.id, rol: user.rol, naam: user.naam,
-      sid: user.schoolId || null, rid: user.resourceId || null,
-      exp: Date.now() + maxAge * 1000,
-    });
-    return json({ rol: user.rol, naam: user.naam }, 200, { 'set-cookie': cookieHeader(token, maxAge, secure) });
+  // Persoonlijke inloglink: /?login=<token> -> POST hierheen -> sessiecookie.
+  if (path === '/api/auth/link' && method === 'POST') {
+    await rateLimit(env, 'authlink', clientIp, 20, 900);
+    const linkTok = str(body.token, 64);
+    if (!linkTok) throw new HttpError(400, 'token ontbreekt');
+    const h = await sha256hex(linkTok);
+    const users = await readJSON(env, KEYS.users);
+    const user = users.items.find((u) => u.loginTokenHash === h && (!u.loginTokenExp || u.loginTokenExp > Date.now()));
+    if (!user) throw new HttpError(401, 'deze inloglink is niet (meer) geldig');
+    return await sessieAntwoord(env, user, secure);
   }
 
   if (path === '/api/logout' && method === 'POST') {
@@ -936,16 +948,18 @@ async function handleApi(request, env) {
         const pwFout = validatePassword(wachtwoord);
         if (pwFout) throw new HttpError(400, pwFout);
         const { salt, hash } = await hashPassword(wachtwoord);
+        const linkTok = uidHex(16);
         const nu = {
           id: uid(), email, rol, naam: str(body.naam, 120) || email, salt, hash,
           schoolId: rol === 'mentor' ? str(body.schoolId, 40) : null,
           resourceId: rol === 'resource' ? str(body.resourceId, 40) : null,
+          loginTokenHash: await sha256hex(linkTok), loginTokenExp: Date.now() + 30 * 24 * 3600 * 1000,
         };
         await mutate(env, KEYS.users, (d) => {
           if (d.items.find((x) => x.email === email)) throw new HttpError(409, 'e-mailadres bestaat al');
           d.items.push(nu); return d;
         });
-        return json({ ok: true, id: nu.id });
+        return json({ ok: true, id: nu.id, loginToken: linkTok });
       }
       if (method === 'DELETE') {
         const id = str(url.searchParams.get('id'), 40);
@@ -955,6 +969,18 @@ async function handleApi(request, env) {
         });
         return json({ ok: true });
       }
+    }
+    if (sub === 'users/inloglink' && method === 'POST') {
+      const id = str(body.id, 40);
+      const linkTok = uidHex(16);
+      const h = await sha256hex(linkTok);
+      await mutate(env, KEYS.users, (d) => {
+        const u = d.items.find((x) => x.id === id);
+        if (!u) throw new HttpError(404, 'account niet gevonden');
+        u.loginTokenHash = h; u.loginTokenExp = Date.now() + 30 * 24 * 3600 * 1000;
+        return d;
+      });
+      return json({ ok: true, loginToken: linkTok });
     }
     throw new HttpError(404, 'onbekende beheer-route');
   }

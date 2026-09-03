@@ -15,51 +15,62 @@
 <header id="yp-topbar" data-title="Inschrijven" data-sub="Examentraining en bijspijkersessies"></header>
 
 <main class="wrap wrap-narrow">
+  <div class="welkom">
+    <h2>Welkom bij Yippie voor de klas</h2>
+    <p>Wij geven in het weekend en in de vakanties examentraining en bijspijksessies in kleine groepjes,
+      per vak en per niveau, met een vaste begeleider erbij. Schrijf je hieronder in; inloggen hoeft niet.
+      Na het versturen krijg je een persoonlijke link waarmee je je indeling ziet.</p>
+  </div>
+
   <div id="loader" class="card card-pad"><div class="empty">Formulier laden...</div></div>
 
   <form id="form" class="stack hidden" novalidate>
     <div class="card">
       <div class="card-head"><h2>1. School en niveau</h2></div>
       <div class="card-pad">
-        <div class="field">
-          <label for="f-school">School</label>
-          <div class="combo">
-            <input class="input" id="f-school" role="combobox" aria-expanded="false" aria-autocomplete="list"
-                   autocomplete="off" placeholder="Typ de naam van je school">
-            <input type="hidden" id="f-schoolId" value="">
-            <ul class="suggesties" id="f-school-sug" role="listbox"></ul>
+        <div class="split2">
+          <div class="field" style="margin-bottom:0">
+            <label for="f-school">School</label>
+            <div class="combo">
+              <input class="input" id="f-school" role="combobox" aria-expanded="false" aria-autocomplete="list"
+                     autocomplete="off" placeholder="Typ de naam van je school">
+              <input type="hidden" id="f-schoolId" value="">
+              <ul class="suggesties" id="f-school-sug" role="listbox"></ul>
+            </div>
+            <p class="hint hidden" id="f-school-note">We kennen deze school nog niet. Yippie koppelt hem later; je kunt gewoon doorgaan.</p>
           </div>
-          <p class="hint hidden" id="f-school-note">We kennen deze school nog niet. Yippie koppelt hem later; je kunt gewoon doorgaan.</p>
-        </div>
-        <div class="field">
-          <label>Niveau</label>
-          <div class="seg" id="f-niveau" role="radiogroup" aria-label="Niveau">
-            <label><input type="radio" name="niveau" value="mavo"><span>vmbo-tl / mavo</span></label>
-            <label><input type="radio" name="niveau" value="havo"><span>havo</span></label>
-            <label><input type="radio" name="niveau" value="vwo"><span>vwo</span></label>
+          <div class="field" style="margin-bottom:0">
+            <label>Niveau</label>
+            <div class="seg" id="f-niveau" role="radiogroup" aria-label="Niveau">
+              <label><input type="radio" name="niveau" value="mavo"><span>vmbo-tl / mavo</span></label>
+              <label><input type="radio" name="niveau" value="havo"><span>havo</span></label>
+              <label><input type="radio" name="niveau" value="vwo"><span>vwo</span></label>
+            </div>
           </div>
         </div>
-        <div class="field hidden" id="f-leerjaar-field">
-          <label>Leerjaar</label>
-          <div class="seg" id="f-leerjaar" role="radiogroup" aria-label="Leerjaar"></div>
-        </div>
-        <div class="field hidden" id="f-traject-field" style="margin-bottom:0">
-          <label>Wat voor traject?</label>
-          <div class="seg" id="f-traject" role="radiogroup" aria-label="Traject">
-            <label><input type="radio" name="traject" value="examentraining"><span>Examentraining</span></label>
-            <label><input type="radio" name="traject" value="bijspijker"><span>Bijspijkertraject</span></label>
+        <div class="split2" style="margin-top:14px">
+          <div class="field hidden" id="f-leerjaar-field" style="margin-bottom:0">
+            <label>Leerjaar</label>
+            <div class="seg" id="f-leerjaar" role="radiogroup" aria-label="Leerjaar"></div>
           </div>
-          <p class="hint" id="f-traject-line"></p>
+          <div class="field hidden" id="f-traject-field" style="margin-bottom:0">
+            <label>Wat voor traject?</label>
+            <div class="seg" id="f-traject" role="radiogroup" aria-label="Traject">
+              <label><input type="radio" name="traject" value="examentraining"><span>Examentraining</span></label>
+              <label><input type="radio" name="traject" value="bijspijker"><span>Bijspijkertraject</span></label>
+            </div>
+          </div>
         </div>
+        <p class="hint hidden" id="f-traject-line" style="margin-top:8px"></p>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>2. Blokken en dagen</h2></div>
+      <div class="card-head"><h2>2. Blokken, dagen en vakken</h2></div>
       <div class="card-pad">
         <p class="hint" style="margin:0 0 14px">
-          Trainingen zijn in het weekend en de vakanties. Kies per blok een dag, een dagdeel en je vak(ken).
-          Niet alle blokken hoeven; per blok mag je een andere keuze maken.
+          Vink de blokken aan waarin je meedoet. Per blok kies je een of meer momenten
+          (bijvoorbeeld zaterdagochtend en zondagmiddag) en de vakken.
         </p>
         <div class="stack" id="f-blokken"></div>
       </div>
@@ -224,25 +235,30 @@
     var dagen = (blok.dagen && blok.dagen.length) ? blok.dagen : ['za', 'zo'];
     var card = YP.el('div', { class: 'blokcard', 'data-blok': blok.id });
 
+    function nlDatum(iso) {
+      var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso;
+      return new Date(t).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+    }
+    var periode = blok.van ? nlDatum(blok.van) + ' t/m ' + nlDatum(blok.tot) : '';
     var head = YP.el('label', { class: 'bc-head' }, [
       YP.el('input', { type: 'checkbox', 'data-role': 'on' }),
       YP.el('span', { class: 'min-w-0' }, [
         YP.el('span', { class: 'bc-t', text: blok.label }),
-        YP.el('span', { class: 'bc-s', text: dagen.map(function (d) { return DAGNAAM[d]; }).join(' of ') + (blok.van ? ' - ' + blok.van + ' t/m ' + blok.tot : '') })
+        YP.el('span', { class: 'bc-s', text: periode ? periode + '  -  ' + dagen.map(function (d) { return DAGNAAM[d]; }).join(' en ') : dagen.map(function (d) { return DAGNAAM[d]; }).join(' en ') })
       ])
     ]);
     card.appendChild(head);
 
     var body = YP.el('div', { class: 'bc-body', hidden: 'hidden' });
 
-    // week-widget: dagen als kolommen, ochtend/middag/avond als rijen
-    var wkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Wanneer in dit blok?' })]);
+    // week-widget: dagen als kolommen, ochtend/middag als rijen. Meerdere momenten mag.
+    var wkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Welke momenten in dit blok? (meerdere mag)' })]);
     var wk = YP.el('div', { class: 'weekgrid' });
     dagen.forEach(function (d) {
       var col = YP.el('div', { class: 'weekcol' }, [YP.el('div', { class: 'wc-day', text: DAGNAAM[d] })]);
       DAGDELEN.forEach(function (dd) {
         var cell = YP.el('label', { class: 'weekcell' }, [
-          YP.el('input', { type: 'radio', name: 'slot_' + blok.id, value: d + '|' + dd }),
+          YP.el('input', { type: 'checkbox', 'data-role': 'slot', value: d + '|' + dd }),
           YP.el('span', { text: DDNAAM[dd] })
         ]);
         col.appendChild(cell);
@@ -309,16 +325,19 @@
     ]);
   }
 
+  // per aangevinkt blok: één keuze per gekozen moment, met de vakken van dat blok
   function readBlokken() {
     var out = [];
     Array.prototype.forEach.call($('f-blokken').querySelectorAll('.blokcard'), function (card) {
       if (!card.querySelector('[data-role="on"]').checked) return;
       var blokId = card.getAttribute('data-blok');
-      var slot = card.querySelector('input[name="slot_' + blokId + '"]:checked');
       var vakken = Array.prototype.map.call(card.querySelectorAll('[data-role="vakken"] input:checked'), function (i) { return i.value; });
-      var dag = '', dagdeel = '';
-      if (slot) { var p = slot.value.split('|'); dag = p[0]; dagdeel = p[1]; }
-      out.push({ blokId: blokId, dag: dag, dagdeel: dagdeel, vakken: vakken });
+      var slots = Array.prototype.map.call(card.querySelectorAll('[data-role="slot"]:checked'), function (i) { return i.value; });
+      if (!slots.length) { out.push({ blokId: blokId, dag: '', dagdeel: '', vakken: vakken, _leeg: true }); return; }
+      slots.forEach(function (v) {
+        var p = v.split('|');
+        out.push({ blokId: blokId, dag: p[0], dagdeel: p[1], vakken: vakken });
+      });
     });
     return out;
   }
@@ -362,7 +381,7 @@
 
     function buildLeerjaar() {
       var n = niveau(); box.innerHTML = '';
-      if (!n) { ljField.classList.add('hidden'); trField.classList.add('hidden'); return; }
+      if (!n) { ljField.classList.add('hidden'); trField.classList.add('hidden'); trLine.classList.add('hidden'); return; }
       for (var j = 1; j <= LEERJAAR_MAX[n]; j++) {
         box.appendChild(YP.el('label', {}, [
           YP.el('input', { type: 'radio', name: 'leerjaar', value: j }),
@@ -375,7 +394,8 @@
     }
     function updateTraject() {
       var n = niveau(), j = leerjaar();
-      if (!n || !j) { trField.classList.add('hidden'); return; }
+      if (!n || !j) { trField.classList.add('hidden'); trLine.classList.add('hidden'); return; }
+      trLine.classList.remove('hidden');
       var examen = j >= LEERJAAR_MAX[n];
       var voorstel = examen ? 'examentraining' : 'bijspijker';
       if (!traject()) {
@@ -434,9 +454,10 @@
     if (!blokken.length) { showErr('Kies minstens een blok (vink het aan).'); return; }
     for (var i = 0; i < blokken.length; i++) {
       var k = blokken[i];
-      if (!k.dag || !k.dagdeel) { showErr('Kies bij elk aangevinkt blok een dag en dagdeel.'); return; }
+      if (k._leeg || !k.dag || !k.dagdeel) { showErr('Kies bij elk aangevinkt blok minstens een moment (zaterdag of zondag, ochtend of middag).'); return; }
       if (!k.vakken.length) { showErr('Kies bij elk aangevinkt blok minstens een vak.'); return; }
     }
+    blokken.forEach(function (k) { delete k._leeg; });
     if (!payload.leerling.naam.trim()) { showErr('Vul de naam van de leerling in.'); return; }
     if (!payload.leerling.email.trim() && !payload.ouder.email.trim()) { showErr('Vul een e-mailadres in (leerling of ouder).'); return; }
 

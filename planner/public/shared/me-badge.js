@@ -35,15 +35,18 @@
       ? '<button class="hdr-profile" id="yp-help" type="button" title="Hoe werkt het?" aria-label="Hoe werkt het?">' +
         (YP.icon ? YP.icon('help', { size: 19 }) : '?') + '</button>'
       : '';
-    var right = '';
-    if (me && me.rol) {
-      right = helpBtn +
-        '<span class="hdr-pill" id="yp-logout" role="button" tabindex="0">Uitloggen</span>' +
-        '<span class="hdr-profile" title="' + YP.esc((me.naam || '') + ' - ' + (ROLNAAM[me.rol] || me.rol)) + '">' +
-          YP.esc(initials(me.naam || me.rol)) + '</span>';
-    } else {
-      right = helpBtn + '<a class="hdr-pill" href="/">Inloggen</a>';
-    }
+    var ingelogd = !!(me && me.rol);
+    var avatar = ingelogd
+      ? '<button class="hdr-profile" id="yp-profile" type="button" aria-haspopup="menu" aria-expanded="false" title="Menu">' + YP.esc(initials(me.naam || me.rol)) + '</button>'
+      : '<a class="hdr-pill" href="/">Inloggen</a>';
+    var menu = ingelogd
+      ? '<div class="hdr-menu" id="yp-menu" role="menu" hidden>' +
+          '<div class="hm-head"><div class="hm-naam">' + YP.esc(me.naam || '') + '</div>' +
+          '<div class="hm-rol">' + YP.esc(ROLNAAM[me.rol] || me.rol) + '</div></div>' +
+          (heeftUitleg ? '<button class="hm-item" id="yp-menu-help" role="menuitem" type="button">' + (YP.icon ? YP.icon('help', { size: 16 }) : '') + ' Hoe werkt het?</button>' : '') +
+          '<button class="hm-item danger" id="yp-menu-logout" role="menuitem" type="button">' + (YP.icon ? YP.icon('logout', { size: 16 }) : '') + ' Uitloggen</button>' +
+        '</div>'
+      : '';
     var greet = me && me.naam ? (groetWoord() + ' ' + voornaam(me.naam)) : 'Yippie voor de klas';
     host.className = 'topbar';
     host.innerHTML =
@@ -54,21 +57,42 @@
           '<h1>' + YP.esc(title) + '</h1>' +
           '<div class="subline">' + YP.esc(langeDatum()) + '</div>' +
         '</div>' +
-        '<div class="hdr-actions">' + right + '</div>' +
+        '<div class="hdr-actions">' + (ingelogd ? '' : helpBtn) + avatar + menu + '</div>' +
       '</div>' +
       '<div class="hdr-wave"></div>';
 
     var hb = document.getElementById('yp-help');
     if (hb) hb.addEventListener('click', function () { if (YP.help) YP.help('introDialog'); });
 
-    var lo = document.getElementById('yp-logout');
-    if (lo) {
-      var doLogout = async function () {
-        try { await YP.api.post('/api/logout'); } catch (e) {}
-        location.href = '/';
+    var doLogout = async function () {
+      try { await YP.api.post('/api/logout'); } catch (e) { /* ignore */ }
+      location.href = '/';
+    };
+
+    var prof = document.getElementById('yp-profile');
+    var menuEl = document.getElementById('yp-menu');
+    if (prof && menuEl) {
+      // De topbar heeft overflow:hidden; hang het menu aan de body en positioneer 'm vast.
+      document.body.appendChild(menuEl);
+      menuEl.style.position = 'fixed';
+      var plaats = function () {
+        var r = prof.getBoundingClientRect();
+        menuEl.style.top = (r.bottom + 8) + 'px';
+        menuEl.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
       };
-      lo.addEventListener('click', doLogout);
-      lo.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); doLogout(); } });
+      var toggle = function (open) {
+        var verberg = open == null ? !menuEl.hidden : !open;
+        if (!verberg) plaats();
+        menuEl.hidden = verberg;
+        prof.setAttribute('aria-expanded', String(!verberg));
+      };
+      window.addEventListener('resize', function () { if (!menuEl.hidden) plaats(); });
+      prof.addEventListener('click', function (e) { e.stopPropagation(); toggle(); });
+      document.addEventListener('click', function (e) { if (!menuEl.hidden && !menuEl.contains(e.target)) toggle(false); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menuEl.hidden) { toggle(false); prof.focus(); } });
+      var mh = document.getElementById('yp-menu-help');
+      if (mh) mh.addEventListener('click', function () { toggle(false); if (YP.help) YP.help('introDialog'); });
+      document.getElementById('yp-menu-logout').addEventListener('click', doLogout);
     }
   }
 

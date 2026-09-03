@@ -934,14 +934,21 @@
     data.items.forEach(function (u) {
       var extra = u.rol === 'mentor' ? (' - ' + (labelOf(c.scholen, u.schoolId, 'naam') || '(geen school)'))
         : (u.rol === 'resource' ? (' - ' + (labelOf((state.resources || {}).items || [], u.resourceId, 'naam') || '(geen begeleider)')) : '');
+      var linkBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', 'data-write': '1', html: (YP.icon ? YP.icon('link', { size: 13 }) : '') + ' Inloglink' });
       var del = YP.el('button', { class: 'icon-btn danger', 'data-write': '1', title: 'Verwijderen', html: ico('trash') });
       var row = YP.el('div', { class: 'list-row' }, [
         YP.el('span', { class: 'lr-main' }, [
           YP.el('span', { class: 'lr-title', text: u.naam + ' (' + u.rol + ')' }),
           YP.el('span', { class: 'lr-sub', text: u.email + extra })
         ]),
-        del
+        linkBtn, del
       ]);
+      linkBtn.addEventListener('click', async function () {
+        try {
+          var r = await YP.api.post('/api/beheer/users/inloglink', { id: u.id });
+          toonInloglink(u, r.loginToken);
+        } catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+      });
       del.addEventListener('click', async function () {
         var ok = await YP.confirm('Account verwijderen?', u.email, { ok: 'Verwijderen', danger: true });
         if (!ok) return;
@@ -955,7 +962,7 @@
     var f = YP.el('form', { class: 'stack', style: 'margin-top:14px', 'data-write': '1' });
     var naam = YP.el('input', { class: 'input', placeholder: 'Naam' });
     var email = YP.el('input', { class: 'input', type: 'email', placeholder: 'E-mail' });
-    var pass = YP.el('input', { class: 'input', type: 'text', placeholder: 'Tijdelijk wachtwoord (min. 8 tekens)' });
+    var pass = YP.el('input', { class: 'input', type: 'text', placeholder: 'Tijdelijk wachtwoord (min. 10 tekens)' });
     var rol = YP.el('select', {});
     rol.innerHTML = '<option value="mentor">Mentor / school</option><option value="resource">Begeleider</option><option value="beheerder">Beheerder</option>';
     var schoolSel = YP.el('select', {});
@@ -983,18 +990,40 @@
     f.addEventListener('submit', async function (e) {
       e.preventDefault();
       try {
-        await YP.api.post('/api/beheer/users', {
+        var r = await YP.api.post('/api/beheer/users', {
           naam: naam.value, email: email.value, wachtwoord: pass.value, rol: rol.value,
           schoolId: schoolSel.value, resourceId: resSel.value
         });
         YP.toast('Account aangemaakt', 'ok');
+        toonInloglink({ naam: naam.value || email.value, email: email.value }, r.loginToken);
         renderAccounts();
       } catch (ex) { YP.toast(ex.message || 'Mislukt', 'bad'); }
     });
     pad.appendChild(f);
-    pad.appendChild(YP.el('p', { class: 'hint', text: 'Geef het tijdelijke wachtwoord zelf door aan de gebruiker. Uitnodigingen per e-mail volgen.' }));
+    pad.appendChild(YP.el('p', { class: 'hint', text: 'Twee manieren om iemand toegang te geven: de persoonlijke inloglink (30 dagen geldig) of het tijdelijke wachtwoord. Stuur er een door. Echte uitnodigingsmail volgt.' }));
     card.appendChild(pad); wrap.appendChild(card);
     panel.appendChild(wrap);
+  }
+
+  function toonInloglink(u, token) {
+    if (!token) return;
+    var link = location.origin + '/?login=' + encodeURIComponent(token);
+    var dlg = document.createElement('dialog');
+    dlg.style.maxWidth = '520px';
+    dlg.innerHTML = '<div class="dlg"><h3>Inloglink voor ' + YP.esc(u.naam || u.email || '') + '</h3>' +
+      '<p class="dsub">Stuur deze link naar ' + YP.esc(u.email || 'de gebruiker') + '. Ermee inloggen kan 30 dagen; daarna maak je een nieuwe.</p>' +
+      '<input class="input mono" id="ll-veld" readonly style="min-width:0"/>' +
+      '<div class="row" style="margin-top:10px"><button type="button" class="btn btn-primary btn-sm" id="ll-copy">Kopieer link</button>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-close>Sluiten</button></div></div>';
+    document.body.appendChild(dlg);
+    dlg.querySelector('#ll-veld').value = link;
+    dlg.querySelector('#ll-copy').addEventListener('click', function () {
+      var i = dlg.querySelector('#ll-veld'); i.select();
+      if (navigator.clipboard) navigator.clipboard.writeText(link).then(function () { YP.toast('Gekopieerd', 'ok'); });
+    });
+    dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    dlg.showModal();
   }
 
   // ---- router ----

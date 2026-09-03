@@ -64,8 +64,10 @@ Inlogaccounts voor mentoren/scholen en begeleiders (en extra beheerders).
   leerlingen van die school, alleen-lezen.
 - Rol **Begeleider**: koppel aan een begeleider uit het tabblad Begeleiders. Die
   persoon beheert de eigen beschikbaarheid en ziet het eigen rooster.
-- Fase 1: je geeft het tijdelijke wachtwoord zelf door. Inloglinks per e-mail
-  (magic links) komen in fase 2.
+- Toegang geven kan op twee manieren: een **persoonlijke inloglink** (30 dagen
+  geldig; knop "Inloglink" per account, of het venster dat na aanmaken opent) of
+  het **tijdelijke wachtwoord**. Stuur er een door. Een echte uitnodigingsmail
+  volgt met de Gmail-koppeling.
 
 ## Rollen en wat ze zien
 
