@@ -2,8 +2,12 @@
 
 Eén KV-namespace, binding `PLANNER_KV`. Per domein één key met één JSON-object.
 Elk object heeft `_rev` (integer, optimistic lock), `_at` (ISO-tijd) en `_by`
-(id van de worker-invocatie die het laatst schreef). `normalize` bestaat nog niet;
-`DEFAULTS` in `_worker.js` levert de lege startvorm.
+(id van de worker-invocatie die het laatst schreef). `DEFAULTS` in `_worker.js`
+levert de lege startvorm; `normalize(key, obj)` draait bij elke read (ook op de
+`DEFAULTS`-fallback), is puur + idempotent en raakt `_rev`/`_at`/`_by` nooit aan.
+Het vult nieuwe velden en migreert oude vormen (o.a. `avond` -> `middag`,
+`conflicten`-strings -> objecten). Wegschrijven in de nieuwe vorm gebeurt vanzelf
+bij de eerstvolgende `mutate()` van die sectie; er is geen bulk-migratie.
 
 ## `config`
 
@@ -12,12 +16,18 @@ Elk object heeft `_rev` (integer, optimistic lock), `_at` (ISO-tijd) en `_by`
   "_rev": 3,
   "scholen":   [{ "id": "sch_lyceum", "naam": "Stedelijk Lyceum" }],
   "vakken":    [{ "id": "vak_wi", "naam": "Wiskunde" }],
-  "jaarlagen": [{ "id": "jl_3h", "label": "3 havo" }],
+  "jaarlagen": [{ "id": "jl_3h", "label": "3 havo", "niveau": "havo", "leerjaar": 3 }],
   "blokken":   [{ "id": "blok1", "label": "Blok 1 (na de herfstvakantie)",
                   "van": "2026-10-26", "tot": "2026-12-13", "dagen": ["za", "zo"] }],
-  "instellingen": { "groepMin": 4, "groepMax": 12 }
+  "instellingen": { "groepMin": 4, "groepMax": 12, "mavoLabel": "vmbo-tl", "splitOpTraject": true }
 }
 ```
+
+`jaarlagen[]` mag met de hand `{id,label}` blijven; het inschrijfformulier maakt
+er automatisch bij met `niveau` (`mavo`/`havo`/`vwo`) + `leerjaar`. `mavoLabel`
+bepaalt het label voor die auto-jaarlagen (`"4 vmbo-tl"`). `splitOpTraject` zet
+`traject` wel/niet in de sessiegroep-sleutel (zie `rooster`). Dagdelen zijn
+`ochtend` / `middag` (geen `avond` meer).
 
 Trainingen lopen in het weekend en in de vakanties. Een blok is een aaneengesloten
 periode; `dagen` zegt welke weekenddagen (`za` / `zo`) in dat blok worden
@@ -36,6 +46,7 @@ aangeboden. Leerlingen kiezen per blok een dag en dagdeel.
     "naam": "K. Jansen",
     "email": "trainer@yippie.test",
     "vakIds": ["vak_wi", "vak_na"],
+    "vakVoorkeuren": ["vak_wi"],
     "jaarlaagIds": ["jl_3h", "jl_4v"],
     "maxPerWeekend": 3,
     "beschikbaarheid": [{ "datum": "2027-01-17", "dagdeel": "ochtend" }]
@@ -57,8 +68,12 @@ terugzet.
     "token": "24-tekens-opaque",           // persoonlijke link /mijn/?token=
     "ts": "2026-09-03T10:00:00.000Z",
     "status": "nieuw",                       // nieuw | ingepland | afgerond | geannuleerd
-    "schoolId": "sch_lyceum",
-    "jaarlaagId": "jl_3h",
+    "schoolId": "sch_lyceum",                // '' als de leerling een onbekende school typte
+    "schoolVrij": "",                        // vrije schoolnaam; beheer koppelt 'm later
+    "niveau": "havo",                        // mavo | havo | vwo
+    "leerjaar": 3,
+    "jaarlaagId": "jl_3h",                   // afgeleid uit (niveau, leerjaar); '' als koppelen faalde
+    "traject": "bijspijker",                 // examentraining | bijspijker (auto-voorstel, leerling bevestigt)
     "keuzes": [
       { "blokId": "blok1", "dag": "za", "dagdeel": "ochtend",
         "vakken": ["Wiskunde", "Aardrijkskunde"] }
@@ -73,7 +88,7 @@ terugzet.
 ```
 
 Per gekozen blok één `keuze` met een dag (`za`/`zo`), een dagdeel
-(`ochtend`/`middag`/`avond`) en de vakken voor dat blok. `vakken` zijn vrije
+(`ochtend`/`middag`) en de vakken voor dat blok. `vakken` zijn vrije
 namen (strings): de bekende vakken plus wat de leerling zelf typt. Voor groeperen
 worden ze genormaliseerd (trim + lowercase), zodat "wiskunde" en "Wiskunde"
 samenvallen. Alleen naam + contact + jaarlaag/vak worden opgeslagen, geen

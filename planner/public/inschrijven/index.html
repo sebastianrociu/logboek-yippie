@@ -21,15 +21,35 @@
     <div class="card">
       <div class="card-head"><h2>1. School en niveau</h2></div>
       <div class="card-pad">
-        <div class="grid cols-2">
-          <div class="field">
-            <label for="f-school">School</label>
-            <select id="f-school" required><option value="">Kies je school</option></select>
+        <div class="field">
+          <label for="f-school">School</label>
+          <div class="combo">
+            <input class="input" id="f-school" role="combobox" aria-expanded="false" aria-autocomplete="list"
+                   autocomplete="off" placeholder="Typ de naam van je school">
+            <input type="hidden" id="f-schoolId" value="">
+            <ul class="suggesties" id="f-school-sug" role="listbox"></ul>
           </div>
-          <div class="field">
-            <label for="f-jaarlaag">Jaarlaag</label>
-            <select id="f-jaarlaag" required><option value="">Kies je jaarlaag</option></select>
+          <p class="hint hidden" id="f-school-note">We kennen deze school nog niet. Yippie koppelt hem later; je kunt gewoon doorgaan.</p>
+        </div>
+        <div class="field">
+          <label>Niveau</label>
+          <div class="seg" id="f-niveau" role="radiogroup" aria-label="Niveau">
+            <label><input type="radio" name="niveau" value="mavo"><span>vmbo-tl / mavo</span></label>
+            <label><input type="radio" name="niveau" value="havo"><span>havo</span></label>
+            <label><input type="radio" name="niveau" value="vwo"><span>vwo</span></label>
           </div>
+        </div>
+        <div class="field hidden" id="f-leerjaar-field">
+          <label>Leerjaar</label>
+          <div class="seg" id="f-leerjaar" role="radiogroup" aria-label="Leerjaar"></div>
+        </div>
+        <div class="field hidden" id="f-traject-field" style="margin-bottom:0">
+          <label>Wat voor traject?</label>
+          <div class="seg" id="f-traject" role="radiogroup" aria-label="Traject">
+            <label><input type="radio" name="traject" value="examentraining"><span>Examentraining</span></label>
+            <label><input type="radio" name="traject" value="bijspijker"><span>Bijspijkertraject</span></label>
+          </div>
+          <p class="hint" id="f-traject-line"></p>
         </div>
       </div>
     </div>
@@ -131,15 +151,72 @@
   var cfg = null;
   var $ = function (id) { return document.getElementById(id); };
   var DAGNAAM = { za: 'Zaterdag', zo: 'Zondag' };
-  var DAGDELEN = ['ochtend', 'middag', 'avond'];
-  var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' };
+  var DAGDELEN = ['ochtend', 'middag'];
+  var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag' };
+  var LEERJAAR_MAX = { mavo: 4, havo: 5, vwo: 6 };
+  var NIVEAULABEL = { mavo: 'vmbo-tl', havo: 'havo', vwo: 'vwo' };
 
-  function opt(sel, list, labelKey) {
-    list.forEach(function (x) {
-      var o = document.createElement('option');
-      o.value = x.id; o.textContent = x[labelKey] || x.naam || x.label;
-      sel.appendChild(o);
+  // ---- fuzzy-match helpers ----------------------------------------------
+  function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function lev(a, b) {
+    a = a || ''; b = b || '';
+    var m = a.length, n = b.length;
+    if (!m) return n; if (!n) return m;
+    var prev = [], cur = [], i, j;
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (i = 1; i <= m; i++) {
+      cur[0] = i;
+      for (j = 1; j <= n; j++) {
+        var cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+        cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+      }
+      for (j = 0; j <= n; j++) prev[j] = cur[j];
+    }
+    return prev[n];
+  }
+  // score 0..1 hoe goed 'q' bij schoolnaam 'name' past (token-overlap + prefix + acroniem + lev)
+  function scoreSchool(q, name) {
+    q = norm(q); var nm = norm(name);
+    if (!q) return 0;
+    if (nm === q) return 1;
+    if (nm.indexOf(q) === 0) return 0.95;
+    var qt = q.split(' '), nt = nm.split(' ');
+    var acro = nt.map(function (t) { return t[0]; }).join('');
+    if (acro === q.replace(/ /g, '')) return 0.9;
+    var hit = 0;
+    qt.forEach(function (t) {
+      if (nt.some(function (w) { return w === t || w.indexOf(t) === 0 || (t.length > 3 && lev(w, t) <= 1); })) hit++;
     });
+    var tokScore = hit / qt.length;
+    var d = lev(q, nm); var levScore = 1 - d / Math.max(q.length, nm.length);
+    return Math.max(tokScore * 0.85, levScore * 0.6);
+  }
+
+  var VAK_SYN = {
+    nl: 'Nederlands', ne: 'Nederlands', ned: 'Nederlands',
+    en: 'Engels', eng: 'Engels', du: 'Duits', dui: 'Duits', fa: 'Frans', fra: 'Frans',
+    gs: 'Geschiedenis', ges: 'Geschiedenis', ak: 'Aardrijkskunde', aardrijkskunde: 'Aardrijkskunde',
+    bio: 'Biologie', biol: 'Biologie', ec: 'Economie', econ: 'Economie',
+    'm&o': 'Bedrijfseconomie', meo: 'Bedrijfseconomie', bec: 'Bedrijfseconomie', 'bedrijfseconomie': 'Bedrijfseconomie',
+    wi: 'Wiskunde', wis: 'Wiskunde', wa: 'Wiskunde A', wb: 'Wiskunde B', wc: 'Wiskunde C', wd: 'Wiskunde D',
+    wisa: 'Wiskunde A', wisb: 'Wiskunde B', 'wiskunde a': 'Wiskunde A', 'wiskunde b': 'Wiskunde B',
+    na: 'Natuurkunde', nat: 'Natuurkunde', sk: 'Scheikunde', schei: 'Scheikunde',
+    nask: 'NaSk', nask1: 'NaSk 1', nask2: 'NaSk 2', ckv: 'CKV', maat: 'Maatschappijleer', ml: 'Maatschappijleer'
+  };
+  // beste kanonieke vaknaam voor wat de leerling typte, of '' als geen goede match
+  function bestVak(typed) {
+    var q = norm(typed);
+    if (!q) return '';
+    if (VAK_SYN[q]) return VAK_SYN[q];
+    var kandidaten = (cfg.vakken || []).map(function (v) { return v.naam; });
+    Object.keys(VAK_SYN).forEach(function (k) { if (kandidaten.indexOf(VAK_SYN[k]) === -1) kandidaten.push(VAK_SYN[k]); });
+    var best = '', bestD = 99;
+    kandidaten.forEach(function (naam) {
+      var d = lev(q, norm(naam));
+      if (d < bestD) { bestD = d; best = naam; }
+    });
+    if (best && bestD <= Math.max(1, Math.floor(norm(best).length * 0.34))) return best;
+    return '';
   }
 
   // ---- blok-kaart met week-widget + vakken --------------------------------
@@ -183,18 +260,36 @@
     var addRow = YP.el('div', { class: 'row', style: 'margin-top:10px' });
     var vkIn = YP.el('input', { class: 'input', placeholder: 'Ander vak (typ en voeg toe)', style: 'flex:1;min-width:160px' });
     var vkBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: 'Vak toevoegen' });
-    function addCustom() {
-      var naam = vkIn.value.trim();
-      if (!naam) return;
+    var sug = YP.el('div', { class: 'notice info hidden', style: 'margin-top:8px' });
+
+    function addVak(naam) {
       var bestaat = Array.prototype.some.call(vkSet.querySelectorAll('input'), function (i) { return i.value.toLowerCase() === naam.toLowerCase(); });
       if (!bestaat) { var c = vakChip(naam); vkSet.appendChild(c); c.querySelector('input').checked = true; }
       else { Array.prototype.forEach.call(vkSet.querySelectorAll('input'), function (i) { if (i.value.toLowerCase() === naam.toLowerCase()) i.checked = true; }); }
+    }
+    function addCustom() {
+      var naam = vkIn.value.trim();
+      sug.classList.add('hidden'); sug.innerHTML = '';
+      if (!naam) return;
+      var kanoniek = bestVak(naam);
+      if (kanoniek && kanoniek.toLowerCase() !== naam.toLowerCase()) {
+        sug.innerHTML = 'Bedoel je <b>' + YP.esc(kanoniek) + '</b>? ';
+        var ja = YP.el('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'Ja' });
+        var nee = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: 'margin-left:6px', text: 'Nee, ' + naam });
+        ja.addEventListener('click', function () { addVak(kanoniek); vkIn.value = ''; sug.classList.add('hidden'); });
+        nee.addEventListener('click', function () { addVak(naam); vkIn.value = ''; sug.classList.add('hidden'); });
+        sug.appendChild(ja); sug.appendChild(nee);
+        sug.classList.remove('hidden');
+        return;
+      }
+      addVak(kanoniek || naam);
       vkIn.value = '';
     }
     vkBtn.addEventListener('click', addCustom);
     vkIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } });
     addRow.appendChild(vkIn); addRow.appendChild(vkBtn);
     vkField.appendChild(addRow);
+    vkField.appendChild(sug);
     vkField.appendChild(YP.el('p', { class: 'hint', text: 'Staat je vak er niet bij? Typ het en klik op "Vak toevoegen".' }));
     body.appendChild(vkField);
 
@@ -228,6 +323,73 @@
     return out;
   }
 
+  // ---- school-combobox -------------------------------------------------
+  function initSchoolCombo() {
+    var inp = $('f-school'), hid = $('f-schoolId'), sug = $('f-school-sug'), note = $('f-school-note');
+    var timer = null;
+    function clearSug() { sug.innerHTML = ''; inp.setAttribute('aria-expanded', 'false'); }
+    function pick(s) {
+      inp.value = s.naam; hid.value = s.id; clearSug(); note.classList.add('hidden');
+    }
+    function render() {
+      var q = inp.value.trim();
+      hid.value = ''; // typen wist een eerdere keuze
+      sug.innerHTML = '';
+      if (q.length < 2) { note.classList.add('hidden'); inp.setAttribute('aria-expanded', 'false'); return; }
+      var scored = (cfg.scholen || []).map(function (s) { return { s: s, sc: scoreSchool(q, s.naam) }; })
+        .filter(function (x) { return x.sc >= 0.34; })
+        .sort(function (a, b) { return b.sc - a.sc; }).slice(0, 4);
+      scored.forEach(function (x) {
+        var li = YP.el('li', { role: 'option' }, [YP.el('span', { text: x.s.naam })]);
+        if (x.s.naam.toLowerCase() === q.toLowerCase()) li.appendChild(YP.el('span', { class: 'sg-sub', text: 'exact' }));
+        li.addEventListener('mousedown', function (e) { e.preventDefault(); pick(x.s); });
+        sug.appendChild(li);
+      });
+      var exact = (cfg.scholen || []).some(function (s) { return s.naam.toLowerCase() === q.toLowerCase(); });
+      inp.setAttribute('aria-expanded', scored.length ? 'true' : 'false');
+      note.classList.toggle('hidden', exact || !q);
+    }
+    inp.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(render, 120); });
+    inp.addEventListener('blur', function () { setTimeout(clearSug, 150); });
+  }
+
+  // ---- niveau / leerjaar / traject -----------------------------------
+  function initNiveau() {
+    var box = $('f-leerjaar'), ljField = $('f-leerjaar-field'), trField = $('f-traject-field'), trLine = $('f-traject-line');
+    function niveau() { var r = $('f-niveau').querySelector('input:checked'); return r ? r.value : ''; }
+    function leerjaar() { var r = box.querySelector('input:checked'); return r ? +r.value : 0; }
+    function traject() { var r = $('f-traject').querySelector('input:checked'); return r ? r.value : ''; }
+
+    function buildLeerjaar() {
+      var n = niveau(); box.innerHTML = '';
+      if (!n) { ljField.classList.add('hidden'); trField.classList.add('hidden'); return; }
+      for (var j = 1; j <= LEERJAAR_MAX[n]; j++) {
+        box.appendChild(YP.el('label', {}, [
+          YP.el('input', { type: 'radio', name: 'leerjaar', value: j }),
+          YP.el('span', { text: String(j) })
+        ]));
+      }
+      ljField.classList.remove('hidden');
+      Array.prototype.forEach.call(box.querySelectorAll('input'), function (i) { i.addEventListener('change', updateTraject); });
+      updateTraject();
+    }
+    function updateTraject() {
+      var n = niveau(), j = leerjaar();
+      if (!n || !j) { trField.classList.add('hidden'); return; }
+      var examen = j >= LEERJAAR_MAX[n];
+      var voorstel = examen ? 'examentraining' : 'bijspijker';
+      if (!traject()) {
+        var pre = $('f-traject').querySelector('input[value="' + voorstel + '"]');
+        if (pre) pre.checked = true;
+      }
+      trLine.textContent = examen
+        ? 'Je zit in je examenjaar (' + NIVEAULABEL[n] + ' ' + j + '), dus we gaan uit van examentraining. Klopt dat niet? Kies bijspijkertraject.'
+        : 'We gaan uit van een bijspijkertraject. Doe je mee aan een examentraining? Kies dat hiernaast.';
+      trField.classList.remove('hidden');
+    }
+    Array.prototype.forEach.call($('f-niveau').querySelectorAll('input'), function (i) { i.addEventListener('change', buildLeerjaar); });
+  }
+
   async function load() {
     try {
       cfg = await YP.api.get('/api/config-public');
@@ -235,12 +397,12 @@
       $('loader').innerHTML = '<div class="notice bad">Kon het formulier niet laden. Probeer het later opnieuw.</div>';
       return;
     }
-    if (!cfg.scholen.length || !cfg.jaarlagen.length || !(cfg.blokken || []).length) {
+    if (!(cfg.blokken || []).length) {
       $('loader').innerHTML = '<div class="notice warn">Het inschrijven is nog niet opengezet. Neem contact op met Yippie voor de klas.</div>';
       return;
     }
-    opt($('f-school'), cfg.scholen, 'naam');
-    opt($('f-jaarlaag'), cfg.jaarlagen, 'label');
+    initSchoolCombo();
+    initNiveau();
     cfg.blokken.forEach(function (b) { $('f-blokken').appendChild(blokCard(b)); });
     $('loader').classList.add('hidden');
     $('form').classList.remove('hidden');
@@ -252,16 +414,23 @@
     e.preventDefault();
     $('f-err').classList.add('hidden');
     var blokken = readBlokken();
+    var niv = ($('f-niveau').querySelector('input:checked') || {}).value || '';
+    var lj = +(($('f-leerjaar').querySelector('input:checked') || {}).value || 0) || 0;
+    var tr = ($('f-traject').querySelector('input:checked') || {}).value || '';
+    var schoolId = $('f-schoolId').value;
+    var schoolTxt = $('f-school').value.trim();
     var payload = {
-      schoolId: $('f-school').value,
-      jaarlaagId: $('f-jaarlaag').value,
+      schoolId: schoolId,
+      schoolVrij: schoolId ? '' : schoolTxt,
+      niveau: niv, leerjaar: lj, traject: tr,
       keuzes: blokken,
       toelichting: $('f-toelichting').value,
       leerling: { naam: $('f-ln').value, email: $('f-le').value, tel: $('f-lt').value },
       ouder: { naam: $('f-on').value, email: $('f-oe').value, tel: $('f-ot').value },
       mentor: { naam: $('f-mn').value, email: $('f-me').value }
     };
-    if (!payload.schoolId || !payload.jaarlaagId) { showErr('Kies een school en een jaarlaag.'); return; }
+    if (!schoolId && !schoolTxt) { showErr('Vul je school in.'); return; }
+    if (!niv || !lj) { showErr('Kies je niveau en leerjaar.'); return; }
     if (!blokken.length) { showErr('Kies minstens een blok (vink het aan).'); return; }
     for (var i = 0; i < blokken.length; i++) {
       var k = blokken[i];
@@ -278,8 +447,9 @@
       $('d-link').value = link;
       $('d-open').href = link;
       var blokN = {}; (cfg.blokken || []).forEach(function (b) { blokN[b.id] = b.label; });
-      $('done-sum').innerHTML = '<b>Je keuze:</b><br>' + blokken.map(function (k) {
-        return YP.esc(blokN[k.blokId] || '') + ' - ' + YP.esc(DAGNAAM[k.dag] || k.dag) + ' ' + YP.esc(k.dagdeel) + ' - ' + YP.esc(k.vakken.join(', '));
+      var trNaam = tr === 'examentraining' ? 'Examentraining' : 'Bijspijkertraject';
+      $('done-sum').innerHTML = '<b>' + trNaam + ' - ' + YP.esc(niv === 'mavo' ? 'vmbo-tl' : niv) + ' ' + lj + '</b><br>' + blokken.map(function (k) {
+        return YP.esc(blokN[k.blokId] || '') + ' - ' + YP.esc(DAGNAAM[k.dag] || k.dag) + ' ' + YP.esc(DDNAAM[k.dagdeel] || k.dagdeel) + ' - ' + YP.esc(k.vakken.join(', '));
       }).join('<br>');
       $('form').classList.add('hidden');
       $('done').classList.remove('hidden');
