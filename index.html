@@ -201,13 +201,14 @@
   .dlg .dsub{margin:0 0 14px;font-size:13px;color:var(--ink-2);line-height:1.6}
   .dlg fieldset{border:1px solid var(--divider);border-radius:var(--r-m);padding:13px 13px 3px;margin:14px 0 0}
   .dlg legend{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:0 6px}
-  .dlg .grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
   .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
   .dlg-actions .left{margin-right:auto}
   .dlg-actions.rev .btn-ghost{order:-1}
   .lock-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding:11px 13px;background:var(--divider);border-radius:12px}
   .lock-bar .lock-t{display:block;font-size:12px;font-weight:800;color:var(--ink)}
   .lock-bar .lock-s{display:block;font-size:11.5px;color:var(--mute);margin-top:1px}
+  .btn-wipe{display:block;margin:16px 0 0;background:none;border:0;padding:4px 0;font:inherit;font-size:12.5px;font-weight:700;color:#DC2626;cursor:pointer}
+  .btn-wipe:hover{text-decoration:underline}
   .roosterbox{background:var(--divider);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--ink-3);line-height:1.8}
   .roosterbox b{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
   .roostergrid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:8px 10px;align-items:center;margin-top:4px}
@@ -294,21 +295,15 @@
 <dialog id="leerlingDialog" closedby="any" aria-labelledby="leerlingTitle">
   <form method="dialog" id="leerlingForm" class="dlg">
     <h3 id="leerlingTitle">Nieuwe leerling</h3>
-    <p class="dsub">Klas en mentor vul je één keer per klas in.</p>
+    <p class="dsub">Nieuwe klassen maak je aan in Beheer.</p>
     <div class="field">
       <label for="lf-naam">Naam</label>
       <input class="input" type="text" id="lf-naam" name="naam" required autocomplete="off">
     </div>
-    <div class="grid2">
-      <div class="field">
-        <label for="lf-klas">Klas</label>
-        <input class="input" type="text" id="lf-klas" name="klas" autocomplete="off" placeholder="bijv. TV17">
-        <p class="hint" id="lf-klas-hint"></p>
-      </div>
-      <div class="field">
-        <label for="lf-mentor">Mentor</label>
-        <input class="input" type="text" id="lf-mentor" name="mentor" autocomplete="off" placeholder="bijv. Jet en Ron">
-      </div>
+    <div class="field">
+      <label for="lf-klas">Klas</label>
+      <select id="lf-klas" name="klas"></select>
+      <p class="hint" id="lf-klas-hint"></p>
     </div>
     <div class="dlg-actions rev">
       <button type="submit" class="btn btn-primary">Opslaan</button>
@@ -352,6 +347,8 @@
       <legend>Klassen &amp; mentoren <span id="bf-klasCount" style="font-weight:600;text-transform:none;letter-spacing:0"></span></legend>
       <div class="klaslist" id="bf-klaslist"></div>
     </fieldset>
+
+    <button type="button" class="btn-wipe hidden" id="bf-wipe">Alles wissen en opnieuw beginnen</button>
 
     <div class="dlg-actions rev">
       <button type="submit" class="btn btn-primary">Opslaan</button>
@@ -442,7 +439,6 @@
   var searchQ = "";
   var collapsedKlassen = {};
   var editId = null;
-  var mentorTouched = false;
   var jaarUnlocked = false;
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -507,44 +503,6 @@
     return s;
   }
 
-  // Demo-inhoud voor een leeg logboek (verdwijnt zodra je zelf iets invoert / opslaat).
-  function seed() {
-    return {
-      organisatie: "Wiskundeschool",
-      school: "Helen Parkhurst",
-      schooljaar: "2026–2027",
-      lessen: [{ naam: "Wiskundeschool", school: "Helen Parkhurst" }],
-      scholen: {
-        "Helen Parkhurst": {
-          klassen: {
-            "TV17": { mentor: "Jet en Ron" },
-            "TA3B": { mentor: "Marloes de Wit" },
-            "4H2": { mentor: "Peter Kok" }
-          },
-          leerlingen: [
-            { naam: "Sanne de Vries", klas: "TV17", entries: [
-              { datum: "2026-09-01", lesVan: "3e", lesTot: "4e", lesuren: "3e t/m 4e uur", van: "10:50", tot: "12:50",
-                notitie: "Breuken herhaald. Optellen en aftrekken gaat goed, vermenigvuldigen nog oefenen." }
-            ] },
-            { naam: "Youssef El Amrani", klas: "TV17", entries: [] },
-            { naam: "Mila Jansen", klas: "TV17", entries: [] },
-            { naam: "Fenna Bakker", klas: "TA3B", entries: [
-              { datum: "2026-09-02", lesVan: "5e", lesTot: "5e", lesuren: "5e uur", van: "13:20", tot: "14:20",
-                notitie: "Kwadratische vergelijkingen. Ontbinden in factoren lukt, abc-formule nog onzeker." }
-            ] },
-            { naam: "Lucas Overmars", klas: "TA3B", entries: [] },
-            { naam: "Nadia Yildirim", klas: "4H2", entries: [
-              { datum: "2026-09-02", lesVan: "7e", lesTot: "8e", lesuren: "7e t/m 8e uur", van: "15:30", tot: "17:30",
-                notitie: "Goniometrie. Sinus en cosinus in de eenheidscirkel doorgenomen, tangens volgende keer." }
-            ] },
-            { naam: "Tygo de Groot", klas: "4H2", entries: [] }
-          ],
-          prullenbak: []
-        }
-      }
-    };
-  }
-
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
@@ -572,7 +530,7 @@
         }
       }
     } catch (e) { /* ignore */ }
-    return normalize(seed());
+    return normalize({});
   }
 
   function save() {
@@ -876,7 +834,7 @@
     if (i < 0) return;
     var l = cur().prullenbak.splice(i, 1)[0];
     delete l.verwijderdOp;
-    if (l.klas && !cur().klassen[l.klas]) cur().klassen[l.klas] = { mentor: "" };
+    if (l.klas && !cur().klassen[l.klas]) l.klas = "";
     cur().leerlingen.push(l);
     save(); markSaved(); renderTrash(); render();
     toast("Leerling hersteld");
@@ -1026,43 +984,31 @@
   var leerlingDialog = document.getElementById("leerlingDialog");
   var lf = document.getElementById("leerlingForm");
   function paintKlasHint() {
-    var opts = Object.keys(cur().klassen).sort(function (a, b) { return a.localeCompare(b, "nl"); });
-    var k = lf.klas.value.trim();
     var el = document.getElementById("lf-klas-hint");
-    if (cur().klassen[k]) el.textContent = "Bekende klas. Mentor: " + (cur().klassen[k].mentor || "onbekend");
-    else if (opts.length) el.textContent = "Bestaande klassen: " + opts.join(", ");
+    var k = lf.klas.value;
+    if (k && cur().klassen[k]) el.textContent = "Mentor: " + (cur().klassen[k].mentor || "onbekend");
+    else if (!Object.keys(cur().klassen).length) el.textContent = "Nog geen klassen. Voeg ze toe in Beheer.";
     else el.textContent = "";
+  }
+  function fillKlasSelect(sel) {
+    var namen = Object.keys(cur().klassen).sort(function (a, b) { return a.localeCompare(b, "nl"); });
+    lf.klas.innerHTML = '<option value="">Zonder klas</option>' +
+      namen.map(function (n) { return '<option value="' + esc(n) + '"' + (n === sel ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
   }
   function openLeerling(id) {
     editId = id || null;
     var l = id ? getLeerling(id) : null;
     lf.naam.value = l ? l.naam : "";
-    lf.klas.value = l ? (l.klas || "") : "";
-    lf.mentor.value = l ? mentorVoor(l.klas) : "";
-    mentorTouched = !!lf.mentor.value;
+    fillKlasSelect(l ? (l.klas || "") : "");
     paintKlasHint();
     document.getElementById("leerlingTitle").textContent = l ? "Gegevens bewerken" : "Nieuwe leerling";
     leerlingDialog.showModal();
     lf.naam.focus();
   }
-  lf.klas.addEventListener("input", function () {
-    // Klas altijd in hoofdletters
-    var up = lf.klas.value.toUpperCase();
-    if (up !== lf.klas.value) {
-      var pos = lf.klas.selectionStart;
-      lf.klas.value = up;
-      try { lf.klas.setSelectionRange(pos, pos); } catch (e) {}
-    }
-    var k = lf.klas.value.trim();
-    if (cur().klassen[k] && !mentorTouched) lf.mentor.value = cur().klassen[k].mentor || "";
-    paintKlasHint();
-  });
-  lf.mentor.addEventListener("input", function () { mentorTouched = true; });
+  lf.klas.addEventListener("change", paintKlasHint);
   lf.addEventListener("submit", function () {
     var naam = lf.naam.value.trim(); if (!naam) return;
-    var klas = lf.klas.value.trim().toUpperCase();
-    var mentor = lf.mentor.value.trim();
-    if (klas) cur().klassen[klas] = { mentor: mentor };
+    var klas = cur().klassen[lf.klas.value] ? lf.klas.value : "";
     if (editId) {
       var l = getLeerling(editId); if (l) { l.naam = naam; l.klas = klas; }
     } else {
@@ -1131,6 +1077,7 @@
     if (unlocked) paintRoosterEditable(); else paintRoosterReadonly();
     paintScholenlijst(unlocked);
     paintKlaslijst(unlocked);
+    document.getElementById("bf-wipe").classList.toggle("hidden", !unlocked);
   }
   function paintScholenlijst(editable) {
     var namen = Object.keys(state.scholen).sort(function (a, b) { return a.localeCompare(b, "nl"); });
@@ -1208,6 +1155,14 @@
       setBeheerLock(true);
       document.getElementById("bf-jaar").focus();
       toast("Ontgrendeld");
+    });
+  });
+  document.getElementById("bf-wipe").addEventListener("click", function () {
+    if (!jaarUnlocked) return;
+    askConfirm("Alles wissen?", "Alle scholen, lessen, klassen en leerlingen worden definitief verwijderd. Je begint met een leeg logboek.", "Alles wissen").then(function (ok) {
+      if (!ok) return;
+      try { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); } catch (e) {}
+      location.reload();
     });
   });
   function bumpKlasCount() {
