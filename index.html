@@ -274,7 +274,7 @@
       <h1>Logboek Yippie</h1>
       <div class="subline" id="subline">Woensdag 3 september</div>
     </div>
-    <button class="hdr-profile" data-act="open-intro" title="Uitleg" aria-label="Uitleg">
+    <button class="hdr-profile" data-act="open-intro" title="Hoe werkt het?" aria-label="Hoe werkt het?">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"></circle><path d="M9.4 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.4 2.3-2.4 3.8"></path><path d="M12 17.2v.01"></path>
       </svg>
@@ -331,15 +331,14 @@
 <!-- ===== Uitleg / tutorial ===== -->
 <dialog id="introDialog" closedby="any" aria-labelledby="introTitle">
   <div class="dlg">
-    <h3 id="introTitle">Zo houd je je logboek bij</h3>
-    <p class="dsub">Na elke keer dat je een leerling 1-op-1 hebt geholpen, leg je kort vast wat jullie hebben gedaan. Zo kan Yippie de begeleiding volgen en verantwoorden naar de school.</p>
+    <h3 id="introTitle">Hoe werkt het?</h3>
+    <p class="dsub">Na elke keer dat je een leerling hebt geholpen, schrijf je in 1 minuut op wat jullie hebben gedaan.</p>
     <ol class="intro-steps">
-      <li><b>Kies links een leerling.</b> Staat die er nog niet? Klik op <b>+ Nieuwe leerling</b> en vul naam en klas in.</li>
-      <li><b>Vul de datum en de lesuren in.</b> De tijden passen zich automatisch aan het rooster aan.</li>
-      <li><b>Schrijf een korte notitie:</b> wat is er geoefend, hoe ging het, wat is de volgende stap.</li>
-      <li><b>Klik op “Toevoegen aan logboek”.</b> Klaar. Alles wordt automatisch bewaard.</li>
+      <li><b>Kies de leerling</b> in de lijst links. Nieuw? Klik op <b>+ Nieuwe leerling</b>.</li>
+      <li><b>Schrijf een korte notitie:</b> wat geoefend, hoe ging het, volgende stap. Datum en lesuur staan er al.</li>
+      <li><b>Klik “Toevoegen aan logboek”.</b> Opslaan hoeft niet, dat gaat vanzelf.</li>
     </ol>
-    <p class="intro-note"><b>Waar let je op?</b> Schrijf feitelijk en over het schoolwerk. Geen bijzonderheden over gezondheid, gedrag of de thuissituatie. Per ongeluk iets weggehaald? Kijk in de prullenbak onderaan de lijst.</p>
+    <p class="intro-note">Blijf bij het schoolwerk. Niets over gezondheid, gedrag of thuis. Iets per ongeluk weg? Onderin de lijst staat de prullenbak. Deze uitleg vind je altijd terug via <b>?</b> rechtsboven.</p>
     <div class="dlg-actions">
       <button type="button" class="btn btn-primary" data-close>Aan de slag</button>
     </div>
@@ -785,7 +784,7 @@
         '<div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"></path><path d="M14 4v6h6M8 13h8M8 17h6"></path></svg></div>' +
         "<p>Nog geen leerling gekozen</p>" +
-        "<small>Kies een leerling, of voeg er een toe.</small>" +
+        "<small>Kies een leerling, of voeg er een toe. Uitleg via <b>?</b> rechtsboven.</small>" +
         '<button class="btn btn-primary" data-act="new-leerling">+ Nieuwe leerling</button></div>';
       return;
     }
