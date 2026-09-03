@@ -1,12 +1,26 @@
 # Yippie Logboek
 
 Project van Sebastian voor **Yippie** (begeleiding op middelbare scholen).
-Nu even teruggebracht tot **alleen het logboek**. Het portaal-namaakwerk
-(login, dashboard) is verwijderd; het staat nog in de git-historie als het
-later terug moet.
 
 Dit bestand is de bron van waarheid voor de opzet. Werk het bij als er iets
 structureels verandert.
+
+---
+
+## 0. Repo-indeling (twee losse projecten)
+
+De repo is gesplitst in twee mappen die niets van elkaar hoeven te weten:
+
+- **`logboek/`** - het logboek waar de rest van dit bestand over gaat. Ongewijzigd
+  self-contained HTML, client-side, GitHub Pages. (Stond eerder in de repo-root;
+  de live URL serveert nu vanaf `/logboek/`.)
+- **`planner/`** - het **plannings- en inschrijfsysteem** (werkgeveropdracht
+  `opdracht-planningssysteem-yippie.md`). Aparte stack: Cloudflare Pages + één
+  Worker, KV, vanilla HTML/JS per pagina, PWA. Fase 1 (MVP) staat er. Eigen
+  documentatie in `planner/docs/` en `planner/README.md`. Deelt de designtaal
+  (coral portaal-stijl) via `planner/public/yp-design.css`.
+
+De rest van dit bestand beschrijft **alleen het logboek**.
 
 ---
 

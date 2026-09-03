@@ -1,0 +1,8 @@
+.DS_Store
+.Rhistory
+node_modules/
+planner/.wrangler/
+planner/cron-worker/.wrangler/
+planner/.dev.vars
+*.log
+planner/public/assets/inter.woff2

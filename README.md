@@ -1,14 +1,23 @@
-# Logboek Yippie
+# Yippie voor de klas - repo
 
-Logboek voor een inschrijfuur zoals **Wiskundeschool**: leerlingen werken aan
-hun vak. Je noteert per leerling kort wat die heeft gedaan, zodat de school en
-de mentoren kunnen meelezen. Aanwezigheid gaat via Somtoday; dit is puur voor
-de notities.
+Twee losse projecten, bewust gescheiden:
 
-- **`index.html`** - het logboek. Openen kan op
-  https://sebastianrociu.github.io/logboek-yippie/
-- **`rollen.html`** - voorbeeldweergave: bekijk het logboek als Yippie,
-  als beheerder, of als mentor van een klas (alleen-lezen).
+| Map | Wat | Stack |
+|---|---|---|
+| [`logboek/`](logboek/) | Het bestaande logboek voor een inschrijfuur (Wiskundeschool). Ongewijzigd. | Eén self-contained HTML-bestand, client-side, GitHub Pages |
+| [`planner/`](planner/) | Nieuw plannings- en inschrijfsysteem (opdracht). Fase 1 (MVP). | Cloudflare Pages + één Worker, KV, vanilla HTML/JS per pagina, PWA |
 
-Alles draait client-side; de gegevens blijven in je eigen browser. School,
-klassen, mentoren en lesuren pas je aan in Beheer (tandwiel, pincode `0000`).
+De opdracht staat in [`opdracht-planningssysteem-yippie.md`](opdracht-planningssysteem-yippie.md).
+Projectafspraken en designtaal: [`CLAUDE.md`](CLAUDE.md).
+
+## planner/ snel starten
+
+```
+cd planner
+npm install
+npm run dev        # npx wrangler pages dev public, met lokale KV-emulatie
+```
+
+Zie [`planner/docs/SETUP.md`](planner/docs/SETUP.md) voor deploy naar Cloudflare,
+[`planner/docs/DATAMODEL.md`](planner/docs/DATAMODEL.md) voor de KV-structuur en
+[`planner/docs/BEHEER.md`](planner/docs/BEHEER.md) voor het beheer.
