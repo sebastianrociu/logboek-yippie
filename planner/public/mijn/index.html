@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mijn indeling - Yippie voor de klas</title>
+<meta name="theme-color" content="#E8735A">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23E8735A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/vendor/tailwind.css">
+<link rel="stylesheet" href="/yp-design.css">
+</head>
+<body>
+<header id="yp-topbar" data-title="Mijn indeling" data-sub="Voor leerling en ouder"></header>
+
+<main class="wrap wrap-narrow">
+  <div id="ask" class="card card-pad hidden">
+    <h2>Persoonlijke link</h2>
+    <p class="card-sub">Plak hier de link of de code die je bij je inschrijving hebt gekregen.</p>
+    <div class="field" style="margin-top:12px">
+      <label for="tok">Link of code</label>
+      <input class="input" id="tok" placeholder="https://.../mijn/?token=...">
+    </div>
+    <button class="btn btn-primary btn-sm" id="tok-go">Bekijken</button>
+  </div>
+
+  <div id="loader" class="card card-pad hidden"><div class="empty">Laden...</div></div>
+  <div id="err" class="card card-pad hidden"><div class="notice bad" id="err-msg"></div></div>
+
+  <div id="view" class="stack hidden">
+    <div class="card">
+      <div class="card-head"><h2 id="v-naam">-</h2><span class="badge neutral" id="v-status">-</span></div>
+      <div class="card-pad">
+        <table class="tbl"><tbody>
+          <tr><th>School</th><td id="v-school">-</td></tr>
+          <tr><th>Jaarlaag</th><td id="v-jaarlaag">-</td></tr>
+          <tr><th>Vakken</th><td id="v-vakken">-</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Sessies</h2></div>
+      <div class="card-pad">
+        <div id="v-rooster-concept" class="notice info hidden">De planning is nog niet definitief. Zodra dat wel zo is, zie je hier je sessies en kun je je afmelden.</div>
+        <div id="v-sessies" class="list"></div>
+        <div id="v-geen" class="empty hidden">Nog geen sessies ingepland.</div>
+      </div>
+    </div>
+
+    <div class="notice info">Kloppen je gegevens niet, of wil je je helemaal terugtrekken? Mail <a href="mailto:planning@yippievoordeklas.nl">planning@yippievoordeklas.nl</a>.</div>
+  </div>
+</main>
+
+<script src="/shared/api.js"></script>
+<script src="/shared/dialog.js"></script>
+<script src="/shared/me-badge.js"></script>
+<script src="/shared/version-check.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  var token = params.get('token') || '';
+
+  function parseToken(v) {
+    v = (v || '').trim();
+    var m = v.match(/[?&]token=([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : v;
+  }
+
+  $('tok-go').addEventListener('click', function () {
+    var t = parseToken($('tok').value);
+    if (t) location.href = '/mijn/?token=' + encodeURIComponent(t);
+  });
+
+  function show(el) { ['ask', 'loader', 'err', 'view'].forEach(function (id) { $(id).classList.toggle('hidden', id !== el); }); }
+
+  async function load() {
+    if (!token) { show('ask'); return; }
+    show('loader');
+    var data;
+    try {
+      data = await YP.api.get('/api/mijn?token=' + encodeURIComponent(token));
+    } catch (e) {
+      $('err-msg').textContent = e.status === 404 ? 'Deze link is niet (meer) geldig.' : (e.message || 'Kon de indeling niet laden.');
+      show('err');
+      return;
+    }
+    var i = data.inschrijving;
+    $('v-naam').textContent = i.leerling;
+    $('v-status').textContent = i.status;
+    $('v-school').textContent = i.school || '-';
+    $('v-jaarlaag').textContent = i.jaarlaag || '-';
+    $('v-vakken').textContent = i.vakken.join(', ') || '-';
+
+    $('v-rooster-concept').classList.toggle('hidden', data.roosterStatus === 'definitief');
+    var list = $('v-sessies'); list.innerHTML = '';
+    if (data.roosterStatus === 'definitief' && !data.sessies.length) $('v-geen').classList.remove('hidden');
+    data.sessies.forEach(function (s) {
+      var row = YP.el('div', { class: 'list-row' }, [
+        YP.el('span', { class: 'lr-main' }, [
+          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? ' - ' + s.datum : '') }),
+          YP.el('span', { class: 'lr-sub', text: [s.dagdeel, s.locatie, s.begeleider].filter(Boolean).join(' - ') })
+        ]),
+        YP.el('button', { class: 'btn btn-ghost btn-sm', 'data-s': s.id }, ['Afmelden'])
+      ]);
+      row.querySelector('button').addEventListener('click', function () { afmelden(s); });
+      list.appendChild(row);
+    });
+    show('view');
+  }
+
+  async function afmelden(s) {
+    var ok = await YP.confirm('Afmelden voor deze sessie?', s.vak + (s.datum ? ' op ' + s.datum : '') + '. Yippie krijgt hier bericht van.', { ok: 'Afmelden', danger: true });
+    if (!ok) return;
+    try {
+      await YP.api.post('/api/mijn/afmelden?token=' + encodeURIComponent(token), { sessieId: s.id });
+      YP.toast('Je bent afgemeld', 'ok');
+      load();
+    } catch (e) { YP.toast(e.message || 'Afmelden mislukt', 'bad'); }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

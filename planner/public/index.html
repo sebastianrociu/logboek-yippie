@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Yippie voor de klas - planning</title>
+<meta name="theme-color" content="#E8735A">
+<meta name="description" content="Plannings- en inschrijfsysteem voor Yippie voor de klas: inschrijven, roosteren en aanwezigheid.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23E8735A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/vendor/tailwind.css">
+<link rel="stylesheet" href="/yp-design.css">
+</head>
+<body>
+<header id="yp-topbar" data-title="Yippie voor de klas" data-sub="Plannings- en inschrijfsysteem"></header>
+
+<main class="wrap wrap-narrow">
+  <div class="stack">
+    <div class="card card-pad">
+      <h2>Waar wil je heen?</h2>
+      <p class="card-sub">Kies je rol. Inschrijven kan zonder account; de andere rollen loggen in.</p>
+      <div class="grid cols-2" style="margin-top:16px">
+        <a class="btn btn-primary btn-block" href="/inschrijven/">Inschrijven</a>
+        <button class="btn btn-ghost btn-block" data-login="beheerder">Beheer (Yippie)</button>
+        <button class="btn btn-ghost btn-block" data-login="resource">Begeleider</button>
+        <button class="btn btn-ghost btn-block" data-login="mentor">School of mentor</button>
+      </div>
+      <p class="hint">Heb je een persoonlijke link gekregen voor je indeling? Open die link of ga naar <a href="/mijn/">Mijn indeling</a>.</p>
+    </div>
+
+    <div class="notice info">
+      <b>Nieuw hier?</b> Yippie voor de klas organiseert examentrainingen en bijspijkersessies.
+      Leerlingen schrijven zich in per vak en jaarlaag; Yippie maakt daar sessies van en koppelt er een begeleider aan.
+    </div>
+  </div>
+</main>
+
+<dialog id="loginDialog" aria-labelledby="loginTitle">
+  <form class="dlg" id="loginForm">
+    <h3 id="loginTitle">Inloggen</h3>
+    <p class="dsub" id="loginSub">Log in met je Yippie-account.</p>
+    <div class="field">
+      <label for="li-email">E-mailadres</label>
+      <input class="input" type="email" id="li-email" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label for="li-pass">Wachtwoord</label>
+      <input class="input" type="password" id="li-pass" autocomplete="current-password" required>
+    </div>
+    <p class="err hidden" id="li-err"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-ghost btn-sm" data-close>Annuleren</button>
+      <button type="submit" class="btn btn-primary btn-sm" id="li-submit">Inloggen</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/shared/api.js"></script>
+<script src="/shared/dialog.js"></script>
+<script src="/shared/me-badge.js"></script>
+<script src="/shared/cmdk.js"></script>
+<script src="/shared/version-check.js"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var next = params.get('next') || '';
+  var ROUTE = { beheerder: '/beheer/', resource: '/resource/', mentor: '/school/' };
+  var SUB = {
+    beheerder: 'Beheer: scholen, vakken, begeleiders, roosteren en rapportage.',
+    resource: 'Begeleider: je eigen beschikbaarheid en je eigen rooster.',
+    mentor: 'School of mentor: het overzicht van je eigen leerlingen.'
+  };
+  var dlg = document.getElementById('loginDialog');
+  var form = document.getElementById('loginForm');
+  var errEl = document.getElementById('li-err');
+  var curRol = 'beheerder';
+
+  function openLogin(rol) {
+    curRol = rol || 'beheerder';
+    document.getElementById('loginSub').textContent = SUB[curRol] || 'Log in met je Yippie-account.';
+    errEl.classList.add('hidden');
+    dlg.showModal();
+    setTimeout(function () { document.getElementById('li-email').focus(); }, 30);
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-login]'), function (b) {
+    b.addEventListener('click', function () { openLogin(b.getAttribute('data-login')); });
+  });
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    errEl.classList.add('hidden');
+    var btn = document.getElementById('li-submit');
+    btn.disabled = true;
+    try {
+      var r = await YP.api.post('/api/login', {
+        email: document.getElementById('li-email').value,
+        password: document.getElementById('li-pass').value
+      });
+      var dest = next && next.indexOf('/') === 0 ? next : (ROUTE[r.rol] || '/');
+      location.href = dest;
+    } catch (err) {
+      errEl.textContent = err.message || 'Inloggen mislukt.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+    }
+  });
+
+  // kwam je hier via een rol-redirect? open meteen het juiste formulier
+  var wantRol = params.get('rol');
+  if (wantRol && ROUTE[wantRol]) openLogin(wantRol);
+})();
+</script>
+</body>
+</html>

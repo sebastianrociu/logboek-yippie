@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mijn rooster - Yippie voor de klas</title>
+<meta name="theme-color" content="#E8735A">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23E8735A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/vendor/tailwind.css">
+<link rel="stylesheet" href="/yp-design.css">
+</head>
+<body>
+<header id="yp-topbar" data-title="Mijn rooster" data-sub="Begeleider" data-auth="resource"></header>
+
+<main class="wrap wrap-narrow">
+  <div id="panel" class="stack"><div class="card card-pad"><div class="empty">Laden...</div></div></div>
+</main>
+
+<script src="/shared/api.js"></script>
+<script src="/shared/dialog.js"></script>
+<script src="/shared/me-badge.js"></script>
+<script src="/shared/version-check.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var panel = $('panel');
+  var data = null;
+  var slots = [];
+
+  function paint() {
+    panel.innerHTML = '';
+    var r = data.resource || {};
+
+    // eigen rooster
+    var rc = YP.el('div', { class: 'card' });
+    rc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Mijn sessies' }), YP.el('span', { class: 'badge ' + (data.roosterStatus === 'definitief' ? 'ok' : 'neutral'), text: data.roosterStatus })]));
+    var rp = YP.el('div', { class: 'card-pad' });
+    if (data.roosterStatus !== 'definitief') rp.appendChild(YP.el('div', { class: 'notice info', text: 'Het rooster is nog niet definitief. Hieronder staat de voorlopige indeling.' }));
+    var list = YP.el('div', { class: 'list' });
+    if (!data.sessies.length) list.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies aan jou gekoppeld.' }));
+    data.sessies.forEach(function (s) {
+      list.appendChild(YP.el('div', { class: 'list-row' }, [
+        YP.el('span', { class: 'lr-main' }, [
+          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? ' - ' + s.datum : ' - datum volgt') }),
+          YP.el('span', { class: 'lr-sub', text: [s.dagdeel, s.locatie, s.aantal + ' leerling(en)'].filter(Boolean).join(' - ') })
+        ])
+      ]));
+    });
+    rp.appendChild(list);
+    rc.appendChild(rp);
+    panel.appendChild(rc);
+
+    // beschikbaarheid
+    var bc = YP.el('div', { class: 'card' });
+    bc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Mijn beschikbaarheid' })]));
+    var bp = YP.el('div', { class: 'card-pad' });
+    if (!r.id) { bp.appendChild(YP.el('div', { class: 'notice warn', text: 'Je account is nog niet aan een begeleider gekoppeld. Vraag Yippie dit te doen.' })); bc.appendChild(bp); panel.appendChild(bc); return; }
+
+    var vakTxt = (r.vakIds || []).length ? 'Vakken en jaarlagen beheert Yippie.' : 'Yippie heeft nog geen vakken/jaarlagen voor je ingesteld.';
+    bp.appendChild(YP.el('p', { class: 'hint', style: 'margin-bottom:10px', text: vakTxt }));
+
+    var slotList = YP.el('div', { class: 'list' });
+    function paintSlots() {
+      slotList.innerHTML = '';
+      if (!slots.length) slotList.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen datums ingevuld.' }));
+      slots.slice().sort(function (a, b) { return a.datum < b.datum ? -1 : 1; }).forEach(function (s) {
+        var row = YP.el('div', { class: 'list-row' }, [
+          YP.el('span', { class: 'lr-main' }, [YP.el('span', { class: 'lr-title', text: s.datum + ' - ' + s.dagdeel })]),
+          YP.el('button', { class: 'lr-del' }, ['×'])
+        ]);
+        row.querySelector('.lr-del').addEventListener('click', function () {
+          slots = slots.filter(function (x) { return !(x.datum === s.datum && x.dagdeel === s.dagdeel); }); paintSlots();
+        });
+        slotList.appendChild(row);
+      });
+    }
+    paintSlots();
+    bp.appendChild(slotList);
+
+    var d = YP.el('input', { class: 'input', type: 'date', style: 'width:170px' });
+    var dd = YP.el('select', { style: 'width:130px' });
+    dd.innerHTML = '<option value="ochtend">Ochtend</option><option value="middag">Middag</option>';
+    var add = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, ['Datum erbij']);
+    add.addEventListener('click', function () {
+      if (!d.value) return;
+      if (!slots.some(function (x) { return x.datum === d.value && x.dagdeel === dd.value; })) slots.push({ datum: d.value, dagdeel: dd.value });
+      d.value = ''; paintSlots();
+    });
+    bp.appendChild(YP.el('div', { class: 'row', style: 'margin-top:8px' }, [d, dd, add]));
+
+    var mx = YP.el('input', { class: 'input', type: 'number', min: '0', value: r.maxPerWeekend || 0, style: 'width:90px' });
+    bp.appendChild(YP.el('div', { class: 'field', style: 'margin-top:12px' }, [YP.el('label', { text: 'Max. sessies per weekend' }), mx]));
+
+    var save = YP.el('button', { class: 'btn btn-primary btn-sm' }, ['Beschikbaarheid opslaan']);
+    save.addEventListener('click', async function () {
+      try {
+        await YP.api.put('/api/resource/beschikbaarheid', { beschikbaarheid: slots, maxPerWeekend: +mx.value || 0 });
+        YP.toast('Opgeslagen', 'ok');
+        load();
+      } catch (e) { YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
+    });
+    bp.appendChild(save);
+    bc.appendChild(bp);
+    panel.appendChild(bc);
+  }
+
+  async function load() {
+    await YP.me;
+    try {
+      data = await YP.api.get('/api/resource/mij');
+      slots = ((data.resource || {}).beschikbaarheid || []).slice();
+      paint();
+    } catch (e) {
+      panel.innerHTML = '<div class="card card-pad"><div class="notice bad">Kon je rooster niet laden.</div></div>';
+    }
+  }
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Inschrijven - Yippie voor de klas</title>
+<meta name="theme-color" content="#E8735A">
+<meta name="description" content="Schrijf je in voor een examentraining of bijspijkersessie van Yippie voor de klas.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23E8735A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/vendor/tailwind.css">
+<link rel="stylesheet" href="/yp-design.css">
+</head>
+<body>
+<header id="yp-topbar" data-title="Inschrijven" data-sub="Examentraining en bijspijkersessies"></header>
+
+<main class="wrap wrap-narrow">
+  <div id="loader" class="card card-pad"><div class="empty">Formulier laden...</div></div>
+
+  <form id="form" class="stack hidden" novalidate>
+    <div class="card">
+      <div class="card-head"><h2>1. School en niveau</h2></div>
+      <div class="card-pad">
+        <div class="field">
+          <label for="f-school">School</label>
+          <select id="f-school" required><option value="">Kies je school</option></select>
+        </div>
+        <div class="field">
+          <label for="f-jaarlaag">Jaarlaag</label>
+          <select id="f-jaarlaag" required><option value="">Kies je jaarlaag</option></select>
+        </div>
+        <div class="field">
+          <label>Vak of vakken</label>
+          <div class="chipset" id="f-vakken"></div>
+          <p class="hint">Meerdere vakken mag.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>2. Wanneer schikt het?</h2></div>
+      <div class="card-pad">
+        <div class="field">
+          <label>Voorkeursdagen</label>
+          <div class="chipset" id="f-dagen">
+            <label class="chip-check"><input type="checkbox" value="za"><span>Zaterdag</span></label>
+            <label class="chip-check"><input type="checkbox" value="zo"><span>Zondag</span></label>
+            <label class="chip-check"><input type="checkbox" value="wk"><span>Doordeweeks</span></label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Dagdeel</label>
+          <div class="chipset" id="f-dagdelen">
+            <label class="chip-check"><input type="checkbox" value="ochtend"><span>Ochtend</span></label>
+            <label class="chip-check"><input type="checkbox" value="middag"><span>Middag</span></label>
+          </div>
+        </div>
+        <div class="field" id="f-periode-wrap">
+          <label for="f-periode">Periode</label>
+          <select id="f-periode"><option value="">Geen voorkeur</option></select>
+        </div>
+        <div class="field">
+          <label for="f-toelichting">Toelichting (niet verplicht)</label>
+          <textarea id="f-toelichting" maxlength="500" placeholder="Bijvoorbeeld: niet op 25 januari, of alleen de eerste helft van de periode."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>3. Contactgegevens</h2></div>
+      <div class="card-pad">
+        <div class="grid cols-2">
+          <div class="field"><label for="f-ln">Naam leerling</label><input class="input" id="f-ln" required></div>
+          <div class="field"><label for="f-lt">Telefoon leerling</label><input class="input" id="f-lt" inputmode="tel"></div>
+          <div class="field"><label for="f-le">E-mail leerling</label><input class="input" type="email" id="f-le"></div>
+          <div class="field"><label for="f-on">Naam ouder of verzorger</label><input class="input" id="f-on"></div>
+          <div class="field"><label for="f-oe">E-mail ouder of verzorger</label><input class="input" type="email" id="f-oe"></div>
+          <div class="field"><label for="f-ot">Telefoon ouder of verzorger</label><input class="input" id="f-ot" inputmode="tel"></div>
+        </div>
+        <p class="hint">Vul minstens een e-mailadres in (leerling of ouder). Daar sturen we de indeling naartoe.</p>
+        <div class="grid cols-2" style="margin-top:8px">
+          <div class="field"><label for="f-mn">Mentor of contactpersoon op school</label><input class="input" id="f-mn"></div>
+          <div class="field"><label for="f-me">E-mail mentor</label><input class="input" type="email" id="f-me"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notice info">
+      We bewaren alleen wat nodig is voor de planning en de terugkoppeling naar je school.
+      Je kunt je gegevens later laten verwijderen via <a href="mailto:privacy@yippievoordeklas.nl">privacy@yippievoordeklas.nl</a>.
+    </div>
+
+    <p class="err hidden" id="f-err"></p>
+    <button type="submit" class="btn btn-primary btn-block" id="f-submit">Inschrijving versturen</button>
+  </form>
+
+  <div id="done" class="card card-pad hidden">
+    <span class="badge ok">Gelukt</span>
+    <h2 style="margin-top:10px">Je inschrijving is binnen</h2>
+    <p class="card-sub">We plannen de sessies in en sturen de indeling naar het opgegeven e-mailadres. Bewaar onderstaande link; daarmee zie je later je persoonlijke indeling en kun je je afmelden voor een sessie.</p>
+    <div class="field" style="margin-top:12px">
+      <label for="d-link">Jouw persoonlijke link</label>
+      <input class="input mono" id="d-link" readonly>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary btn-sm" id="d-copy">Link kopieren</button>
+      <a class="btn btn-ghost btn-sm" id="d-open" href="#">Nu openen</a>
+    </div>
+  </div>
+</main>
+
+<script src="/shared/api.js"></script>
+<script src="/shared/dialog.js"></script>
+<script src="/shared/me-badge.js"></script>
+<script src="/shared/version-check.js"></script>
+<script>
+(function () {
+  var cfg = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function opt(sel, list, labelKey) {
+    list.forEach(function (x) {
+      var o = document.createElement('option');
+      o.value = x.id; o.textContent = x[labelKey] || x.naam || x.label;
+      sel.appendChild(o);
+    });
+  }
+  function chip(host, value, label) {
+    var l = YP.el('label', { class: 'chip-check' }, [
+      YP.el('input', { type: 'checkbox', value: value }),
+      YP.el('span', { text: label })
+    ]);
+    host.appendChild(l);
+  }
+  function checked(host) {
+    return Array.prototype.map.call(host.querySelectorAll('input:checked'), function (i) { return i.value; });
+  }
+
+  async function load() {
+    try {
+      cfg = await YP.api.get('/api/config-public');
+    } catch (e) {
+      $('loader').innerHTML = '<div class="notice bad">Kon het formulier niet laden. Probeer het later opnieuw.</div>';
+      return;
+    }
+    if (!cfg.scholen.length || !cfg.vakken.length || !cfg.jaarlagen.length) {
+      $('loader').innerHTML = '<div class="notice warn">Het inschrijven is nog niet opengezet. Neem contact op met Yippie voor de klas.</div>';
+      return;
+    }
+    opt($('f-school'), cfg.scholen, 'naam');
+    opt($('f-jaarlaag'), cfg.jaarlagen, 'label');
+    opt($('f-periode'), cfg.periodes, 'label');
+    if (!cfg.periodes.length) $('f-periode-wrap').classList.add('hidden');
+    cfg.vakken.forEach(function (v) { chip($('f-vakken'), v.id, v.naam); });
+    $('loader').classList.add('hidden');
+    $('form').classList.remove('hidden');
+  }
+
+  $('form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var err = $('f-err'); err.classList.add('hidden');
+    var payload = {
+      schoolId: $('f-school').value,
+      jaarlaagId: $('f-jaarlaag').value,
+      vakIds: checked($('f-vakken')),
+      voorkeur: {
+        dagen: checked($('f-dagen')),
+        dagdelen: checked($('f-dagdelen')),
+        periodeId: $('f-periode').value,
+        toelichting: $('f-toelichting').value
+      },
+      leerling: { naam: $('f-ln').value, email: $('f-le').value, tel: $('f-lt').value },
+      ouder: { naam: $('f-on').value, email: $('f-oe').value, tel: $('f-ot').value },
+      mentor: { naam: $('f-mn').value, email: $('f-me').value }
+    };
+    if (!payload.schoolId || !payload.jaarlaagId) { showErr('Kies een school en een jaarlaag.'); return; }
+    if (!payload.vakIds.length) { showErr('Kies minstens een vak.'); return; }
+    if (!payload.leerling.naam.trim()) { showErr('Vul de naam van de leerling in.'); return; }
+    if (!payload.leerling.email.trim() && !payload.ouder.email.trim()) { showErr('Vul een e-mailadres in (leerling of ouder).'); return; }
+
+    var btn = $('f-submit'); btn.disabled = true; btn.textContent = 'Versturen...';
+    try {
+      var r = await YP.api.post('/api/inschrijving', payload);
+      var link = location.origin + '/mijn/?token=' + encodeURIComponent(r.token);
+      $('d-link').value = link;
+      $('d-open').href = link;
+      $('form').classList.add('hidden');
+      $('done').classList.remove('hidden');
+      window.scrollTo(0, 0);
+    } catch (ex) {
+      showErr(ex.message || 'Er ging iets mis. Probeer het opnieuw.');
+      btn.disabled = false; btn.textContent = 'Inschrijving versturen';
+    }
+  });
+
+  function showErr(m) { var e = $('f-err'); e.textContent = m; e.classList.remove('hidden'); e.scrollIntoView({ block: 'center' }); }
+
+  $('d-copy').addEventListener('click', function () {
+    var i = $('d-link'); i.select();
+    navigator.clipboard && navigator.clipboard.writeText(i.value).then(function () { YP.toast('Link gekopieerd', 'ok'); });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

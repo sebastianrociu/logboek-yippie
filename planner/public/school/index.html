@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Schooloverzicht - Yippie voor de klas</title>
+<meta name="theme-color" content="#E8735A">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23E8735A'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/vendor/tailwind.css">
+<link rel="stylesheet" href="/yp-design.css">
+</head>
+<body>
+<header id="yp-topbar" data-title="Schooloverzicht" data-sub="School en mentor" data-auth="mentor"></header>
+
+<div class="ro-banner">Alleen-lezen. Je ziet uitsluitend de leerlingen van je eigen school.</div>
+
+<main class="wrap">
+  <div id="panel"><div class="card card-pad"><div class="empty">Laden...</div></div></div>
+</main>
+
+<script src="/shared/api.js"></script>
+<script src="/shared/dialog.js"></script>
+<script src="/shared/me-badge.js"></script>
+<script src="/shared/version-check.js"></script>
+<script>
+(function () {
+  document.documentElement.classList.add('readonly');
+  var panel = document.getElementById('panel');
+
+  function esc(s) { return YP.esc(s); }
+
+  async function load() {
+    await YP.me;
+    var d;
+    try { d = await YP.api.get('/api/school/overzicht'); }
+    catch (e) { panel.innerHTML = '<div class="card card-pad"><div class="notice bad">Kon het overzicht niet laden.</div></div>'; return; }
+
+    if (!d.school) { panel.innerHTML = '<div class="card card-pad"><div class="notice warn">Je account is nog niet aan een school gekoppeld. Vraag Yippie dit te doen.</div></div>'; return; }
+
+    var ingedeeld = d.leerlingen.filter(function (l) { return l.ingedeeld > 0; }).length;
+    var html = '';
+    html += '<div class="card card-pad spread" style="margin-bottom:16px">';
+    html += '<div><h2>' + esc(d.school) + '</h2><p class="card-sub">' + d.leerlingen.length + ' ingeschreven leerling(en), ' + ingedeeld + ' ingedeeld. Planning: ' + esc(d.roosterStatus) + '.</p></div>';
+    html += '<button class="btn btn-ghost btn-sm" id="print">Afdrukken of pdf</button>';
+    html += '</div>';
+
+    if (!d.leerlingen.length) {
+      html += '<div class="card card-pad"><div class="empty">Nog geen inschrijvingen van je school.</div></div>';
+    } else {
+      html += '<div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Leerling</th><th>Jaarlaag</th><th>Vakken</th><th>Mentor</th><th>Status</th><th>Sessies</th></tr></thead><tbody>';
+      d.leerlingen.forEach(function (l) {
+        var ses = l.sessies.map(function (s) { return esc(s.vak) + (s.datum ? ' (' + esc(s.datum) + ')' : ''); }).join('<br>') || '<span class="muted">nog niet ingedeeld</span>';
+        html += '<tr><td><span class="lr-title">' + esc(l.leerling) + '</span></td><td>' + esc(l.jaarlaag) + '</td><td>' + esc(l.vakken.join(', ')) + '</td><td>' + esc(l.mentor || '-') + '</td><td>' + esc(l.status) + '</td><td>' + ses + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+    html += '<p class="hint" style="margin-top:12px">Aanwezigheid per sessie en een exportknop (pdf/excel) komen in fase 3. Nu kun je deze pagina afdrukken of als pdf bewaren.</p>';
+    panel.innerHTML = html;
+    var p = document.getElementById('print');
+    if (p) p.addEventListener('click', function () { window.print(); });
+  }
+  load();
+})();
+</script>
+</body>
+</html>
