@@ -1,8 +1,14 @@
 # Yippie Logboek + Portaal
 
-Project van Sebastian voor **Yippie** (huiswerkbegeleiding op middelbare scholen).
+Project van Sebastian voor **Yippie** (begeleiding op middelbare scholen).
 Doel: één GitHub-repo die het **Yippie-portaal** namaakt/overneemt en er het
 **Logboek** in verwerkt, met de juiste toegangsregels.
+
+**Wat is Wiskundeschool?** Geen 1-op-1-bijles, maar een **inschrijfuur**:
+leerlingen schrijven zich in (of worden ingeschreven door mentoren/docenten) en
+werken aan hun vak, met een Yippie erbij voor vragen. Het logboek legt per
+leerling vast wat die wanneer heeft gedaan, zodat de **school en mentoren** het
+kunnen terugzien (die openen het logboek alleen-lezen).
 
 Dit bestand is de bron van waarheid voor de opzet. Werk het bij als er iets
 structureels verandert.
@@ -13,7 +19,7 @@ structureels verandert.
 
 | Onderdeel | Status | Bestand(en) |
 |---|---|---|
-| **Logboek** (huiswerkklas-sessies loggen) | Werkt | `logboek.html` |
+| **Logboek** (per leerling loggen wat die in het inschrijfuur deed) | Werkt | `logboek.html` |
 | **Portaal** (login -> dashboard -> gated logboek) | v1 werkt | `index.html`, `dashboard.html`, `portaal-data.js` |
 | **Toegangspoort** (logboek vanaf 1e planning op Wiskundeschool) | Werkt | in `index.html` (vlag) + `logboek.html` (check) |
 | **Rol mentor/school = alleen-lezen logboek** | Werkt | `logboek.html` (`READONLY`) |
@@ -198,7 +204,7 @@ Die stelt een `mailto:`-link samen met:
 
 - ontvanger: het mentor-veld van de klas (als dat een e-mail is; anders leeg laten
   en de beheerder vult 'm in),
-- onderwerp: `Update huiswerkklas <klas> - week <nr>`,
+- onderwerp: `Update Wiskundeschool <klas> - week <nr>`,
 - body: een lijstje per leerling met de notities van die klas van de afgelopen
   7 dagen (datum + korte notitie), plus een korte kop.
 
