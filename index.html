@@ -69,11 +69,9 @@
   .hdr-profile:hover,.hdr-profile:active{background:rgba(255,255,255,.38)}
   .hdr-profile svg{width:19px;height:19px;display:block}
 
-  /* ═══ Context bar - les-keuze; de school hoort bij de les en staat als tekst ═══ */
+  /* ═══ Context bar - één keuzemenu "Les (School)" ═══ */
   .context{padding:16px 16px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .context .cx-mid{font-size:13.5px;font-weight:600;color:var(--mute-2)}
-  .context .cx-school{font-size:13.5px;font-weight:700;color:var(--ink)}
-  #lesSel{width:auto;min-width:150px;font-weight:700;color:var(--ink)}
+  #lesSel{width:auto;min-width:200px;max-width:100%;font-weight:700;color:var(--ink)}
   .save-pill{display:inline-flex;align-items:center;gap:5px;margin-left:auto;background:var(--surface);border:1px solid var(--line);
     border-radius:999px;padding:7px 13px;font-size:11.5px;font-weight:700;color:var(--mute);white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(15,23,42,.04)}
 
@@ -227,6 +225,7 @@
   .klaslist .kl-del:disabled{opacity:.3;cursor:not-allowed}
   .klaslist .kl-newrow{display:flex;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
   .klaslist .kl-newrow input{padding:7px 10px;font-size:12.5px}
+  .klaslist .kl-ns{flex:1}
   .klaslist .kl-nk{max-width:110px;text-transform:uppercase}
   .klaslist .kl-nk::placeholder{text-transform:none}
   .klaslist .kl-empty{font-size:12.5px;color:var(--mute);padding:6px 2px}
@@ -280,9 +279,7 @@
 </header>
 
 <div class="context">
-  <select id="lesSel" aria-label="Les"></select>
-  <span class="cx-mid">op het</span>
-  <span class="cx-school" id="cxSchool"></span>
+  <select id="lesSel" aria-label="Les en school"></select>
   <span class="save-pill" id="savePill">Opgeslagen</span>
 </div>
 
@@ -324,7 +321,7 @@
 <dialog id="beheerDialog" closedby="any" aria-labelledby="beheerTitle">
   <form method="dialog" id="beheerForm" class="dlg">
     <h3 id="beheerTitle">Beheer</h3>
-    <p class="dsub">Klassen, mentoren, lesuren en het schooljaar. Les en school wissel je bovenaan.</p>
+    <p class="dsub">Scholen, klassen, mentoren, lesuren en het schooljaar. Van les wisselen doe je bovenaan.</p>
 
     <div class="field">
       <label for="bf-school">School</label>
@@ -333,11 +330,16 @@
     </div>
 
     <div class="lock-bar">
-      <div><span class="lock-t">&#128274; Beheerder</span><span class="lock-s" id="bf-lockstate">Ontgrendel om lesuren, klassen en het schooljaar te wijzigen.</span></div>
+      <div><span class="lock-t">&#128274; Beheerder</span><span class="lock-s" id="bf-lockstate">Ontgrendel om scholen, lesuren, klassen en het schooljaar te wijzigen.</span></div>
       <button type="button" class="btn btn-ghost btn-sm" id="bf-unlock">Ontgrendelen</button>
     </div>
 
-    <div class="field" style="margin-top:12px"><label for="bf-jaar">Schooljaar</label>
+    <fieldset style="margin-top:12px">
+      <legend>Scholen <span id="bf-schoolCount" style="font-weight:600;text-transform:none;letter-spacing:0"></span></legend>
+      <div class="klaslist" id="bf-scholenlist"></div>
+    </fieldset>
+
+    <div class="field"><label for="bf-jaar">Schooljaar</label>
       <input class="input" type="text" id="bf-jaar" name="schooljaar" autocomplete="off" readonly></div>
 
     <fieldset id="roosterFs">
@@ -505,6 +507,44 @@
     return s;
   }
 
+  // Demo-inhoud voor een leeg logboek (verdwijnt zodra je zelf iets invoert / opslaat).
+  function seed() {
+    return {
+      organisatie: "Wiskundeschool",
+      school: "Helen Parkhurst",
+      schooljaar: "2026–2027",
+      lessen: [{ naam: "Wiskundeschool", school: "Helen Parkhurst" }],
+      scholen: {
+        "Helen Parkhurst": {
+          klassen: {
+            "TV17": { mentor: "Jet en Ron" },
+            "TA3B": { mentor: "Marloes de Wit" },
+            "4H2": { mentor: "Peter Kok" }
+          },
+          leerlingen: [
+            { naam: "Sanne de Vries", klas: "TV17", entries: [
+              { datum: "2026-09-01", lesVan: "3e", lesTot: "4e", lesuren: "3e t/m 4e uur", van: "10:50", tot: "12:50",
+                notitie: "Breuken herhaald. Optellen en aftrekken gaat goed, vermenigvuldigen nog oefenen." }
+            ] },
+            { naam: "Youssef El Amrani", klas: "TV17", entries: [] },
+            { naam: "Mila Jansen", klas: "TV17", entries: [] },
+            { naam: "Fenna Bakker", klas: "TA3B", entries: [
+              { datum: "2026-09-02", lesVan: "5e", lesTot: "5e", lesuren: "5e uur", van: "13:20", tot: "14:20",
+                notitie: "Kwadratische vergelijkingen. Ontbinden in factoren lukt, abc-formule nog onzeker." }
+            ] },
+            { naam: "Lucas Overmars", klas: "TA3B", entries: [] },
+            { naam: "Nadia Yildirim", klas: "4H2", entries: [
+              { datum: "2026-09-02", lesVan: "7e", lesTot: "8e", lesuren: "7e t/m 8e uur", van: "15:30", tot: "17:30",
+                notitie: "Goniometrie. Sinus en cosinus in de eenheidscirkel doorgenomen, tangens volgende keer." }
+            ] },
+            { naam: "Tygo de Groot", klas: "4H2", entries: [] }
+          ],
+          prullenbak: []
+        }
+      }
+    };
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
@@ -532,7 +572,7 @@
         }
       }
     } catch (e) { /* ignore */ }
-    return normalize({});
+    return normalize(seed());
   }
 
   function save() {
@@ -654,9 +694,8 @@
     var lesSel = document.getElementById("lesSel");
     lesSel.innerHTML = state.lessen.map(function (l, i) {
       var seld = (l.naam === state.organisatie && l.school === state.school) ? " selected" : "";
-      return '<option value="' + i + '"' + seld + ">" + esc(l.naam) + "</option>";
+      return '<option value="' + i + '"' + seld + ">" + esc(l.naam) + " (" + esc(l.school) + ")</option>";
     }).join("") + '<option value="__add">Nieuwe les toevoegen…</option>';
-    document.getElementById("cxSchool").textContent = state.school;
   }
 
   // ---------- Render: left panel ----------
@@ -1087,10 +1126,32 @@
     document.getElementById("bf-jaar").readOnly = !unlocked;
     document.getElementById("bf-unlock").textContent = unlocked ? "Ontgrendeld" : "Ontgrendelen";
     document.getElementById("bf-lockstate").textContent = unlocked
-      ? "Ontgrendeld. Je kunt lesuren, klassen en het schooljaar wijzigen."
-      : "Ontgrendel om lesuren, klassen en het schooljaar te wijzigen.";
+      ? "Ontgrendeld. Je kunt scholen, lesuren, klassen en het schooljaar wijzigen."
+      : "Ontgrendel om scholen, lesuren, klassen en het schooljaar te wijzigen.";
     if (unlocked) paintRoosterEditable(); else paintRoosterReadonly();
+    paintScholenlijst(unlocked);
     paintKlaslijst(unlocked);
+  }
+  function paintScholenlijst(editable) {
+    var namen = Object.keys(state.scholen).sort(function (a, b) { return a.localeCompare(b, "nl"); });
+    document.getElementById("bf-schoolCount").textContent = namen.length ? "(" + namen.length + ")" : "";
+    var box = document.getElementById("bf-scholenlist");
+    var rows = namen.map(function (n) {
+      var lc = state.scholen[n].leerlingen.length;
+      var meta = lc + " leerling" + (lc === 1 ? "" : "en") + (n === state.school ? " · actief" : "");
+      if (!editable) return '<div class="kl-row"><span class="kl-k">' + esc(n) + '</span><span class="kl-m">' + meta + "</span></div>";
+      return '<div class="kl-row" data-s="' + esc(n) + '">' +
+        '<span class="kl-k">' + esc(n) + '</span>' +
+        '<span class="kl-m">' + meta + "</span>" +
+        '<button type="button" class="kl-del" title="School verwijderen"' + (namen.length > 1 ? "" : " disabled") + ">×</button>" +
+        "</div>";
+    }).join("");
+    if (!editable) { box.innerHTML = rows || '<div class="kl-empty">Nog geen scholen.</div>'; return; }
+    box.innerHTML = rows +
+      '<div class="kl-newrow">' +
+        '<input class="input kl-ns" type="text" placeholder="Nieuwe school" autocomplete="off">' +
+        '<button type="button" class="btn btn-ghost btn-sm" id="bf-schoolAdd">Toevoegen</button>' +
+      "</div>";
   }
   function paintKlaslijst(editable) {
     var kl = cur().klassen || {};
@@ -1141,7 +1202,7 @@
   }
   document.getElementById("bf-unlock").addEventListener("click", function () {
     if (jaarUnlocked) return;
-    askPin("Voer de beheerderspincode in om lesuren, klassen en het schooljaar te wijzigen.").then(function (ok) {
+    askPin("Voer de beheerderspincode in om scholen, lesuren, klassen en het schooljaar te wijzigen.").then(function (ok) {
       if (!ok) { toast("Onjuiste pincode"); return; }
       jaarUnlocked = true;
       setBeheerLock(true);
@@ -1186,6 +1247,63 @@
   document.getElementById("bf-klaslist").addEventListener("input", function (e) {
     if (e.target.classList.contains("kl-nk")) e.target.value = e.target.value.toUpperCase();
   });
+
+  // ---------- Beheer: scholen toevoegen / verwijderen ----------
+  function herpaintBeheerNaSchoolwissel() {
+    beheerSchool = state.school;
+    document.getElementById("bf-school").value = state.school;
+    paintBeheerPreview();
+    paintScholenlijst(jaarUnlocked);
+    if (jaarUnlocked) { paintRoosterEditable(); paintKlaslijst(true); }
+    else { paintRoosterReadonly(); paintKlaslijst(false); }
+    render();
+  }
+  document.getElementById("bf-scholenlist").addEventListener("click", function (e) {
+    var del = e.target.closest(".kl-del");
+    if (del && !del.disabled) {
+      var naam = del.closest(".kl-row").getAttribute("data-s");
+      var sc = state.scholen[naam];
+      if (!sc) return;
+      var lc = sc.leerlingen.length + sc.prullenbak.length;
+      var lessenHier = state.lessen.filter(function (l) { return l.school === naam; }).length;
+      var stukken = [];
+      if (lc) stukken.push(lc + " leerling" + (lc === 1 ? "" : "en"));
+      if (lessenHier) stukken.push(lessenHier + " les" + (lessenHier === 1 ? "" : "sen"));
+      var body = stukken.length
+        ? naam + " en " + stukken.join(" en ") + " worden definitief verwijderd."
+        : naam + " wordt verwijderd.";
+      askConfirm("School verwijderen?", body, "Verwijderen").then(function (ok) {
+        if (!ok) return;
+        delete state.scholen[naam];
+        if (state.roosters) delete state.roosters[naam];
+        state.lessen = state.lessen.filter(function (l) { return l.school !== naam; });
+        if (!state.lessen.some(function (l) { return l.naam === state.organisatie && l.school === state.school; })) {
+          if (!state.lessen.length) {
+            state.lessen = [{ naam: state.organisatie || "Les", school: Object.keys(state.scholen)[0] }];
+          }
+          state.organisatie = state.lessen[0].naam;
+          state.school = state.lessen[0].school;
+          selectedId = null; searchQ = "";
+        }
+        save(); markSaved();
+        herpaintBeheerNaSchoolwissel();
+        toast("School verwijderd");
+      });
+      return;
+    }
+    if (e.target.id === "bf-schoolAdd") {
+      var inp = document.querySelector("#bf-scholenlist .kl-ns");
+      var naam2 = inp.value.trim();
+      if (!naam2) { inp.focus(); return; }
+      if (state.scholen[naam2]) { toast("Die school bestaat al"); return; }
+      state.scholen[naam2] = { klassen: {}, leerlingen: [], prullenbak: [] };
+      save(); markSaved();
+      paintScholenlijst(true);
+      render();
+      toast("School toegevoegd. Kies bovenaan ‘Nieuwe les’ om 'm te gebruiken.");
+    }
+  });
+
   bf.addEventListener("submit", function () {
     if (jaarUnlocked) {
       state.schooljaar = document.getElementById("bf-jaar").value.trim() || state.schooljaar;
