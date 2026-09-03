@@ -37,10 +37,9 @@
     <div class="card">
       <div class="card-head"><h2>2. Blokken en dagen</h2></div>
       <div class="card-pad">
-        <p class="notice info" style="margin-bottom:14px">
-          De trainingen zijn in het <b>weekend</b> en in de <b>schoolvakanties</b>. Kies per blok een dag en
-          dagdeel, en de vakken die je in dat blok wilt volgen. Je hoeft niet alle blokken te kiezen, en de
-          keuze mag per blok verschillen.
+        <p class="hint" style="margin:0 0 14px">
+          Trainingen zijn in het weekend en de vakanties. Kies per blok een dag, een dagdeel en je vak(ken).
+          Niet alle blokken hoeven; per blok mag je een andere keuze maken.
         </p>
         <div class="stack" id="f-blokken"></div>
       </div>
@@ -82,8 +81,8 @@
     </div>
 
     <div class="notice info">
-      We bewaren alleen wat nodig is voor de planning en de terugkoppeling naar je school.
-      Je kunt je gegevens later laten verwijderen via <a href="mailto:privacy@yippievoordeklas.nl">privacy@yippievoordeklas.nl</a>.
+      We bewaren alleen wat nodig is voor de planning en de terugkoppeling naar school. Gegevens laten
+      verwijderen kan via <a href="mailto:privacy@yippievoordeklas.nl">privacy@yippievoordeklas.nl</a>.
     </div>
 
     <p class="err hidden" id="f-err"></p>
@@ -93,11 +92,11 @@
   <div id="done" class="card card-pad hidden">
     <span class="badge ok">Gelukt</span>
     <h2 style="margin-top:10px">Je inschrijving is binnen</h2>
-    <p class="card-sub">We plannen de sessies in en sturen de indeling naar het opgegeven e-mailadres. Bewaar onderstaande link; daarmee zie je later je persoonlijke indeling en kun je je afmelden voor een sessie.</p>
+    <p class="card-sub">Bewaar je persoonlijke link. Daarmee zie je straks je indeling en kun je je afmelden voor een sessie.</p>
     <div id="done-sum" class="notice info" style="margin-top:12px"></div>
     <div class="field" style="margin-top:12px">
       <label for="d-link">Jouw persoonlijke link</label>
-      <input class="input mono" id="d-link" readonly>
+      <input class="input mono" id="d-link" readonly style="min-width:0">
     </div>
     <div class="row">
       <button class="btn btn-primary btn-sm" id="d-copy">Link kopieren</button>
@@ -106,7 +105,24 @@
   </div>
 </main>
 
+<dialog id="introDialog" aria-labelledby="introTitle">
+  <div class="dlg">
+    <h3 id="introTitle">Inschrijven in het kort</h3>
+    <p class="dsub">Voor leerling en ouder. Inloggen hoeft niet.</p>
+    <ol class="intro-steps">
+      <li><b>School en niveau.</b> Typ je school (ook een afkorting werkt) en kies je niveau en leerjaar.</li>
+      <li><b>Blokken en vakken.</b> Kies per blok een dag, ochtend of middag, en je vak(ken).</li>
+      <li><b>Contactgegevens.</b> Vul een e-mailadres van de leerling of ouder in. Daar komt de indeling.</li>
+    </ol>
+    <p class="intro-note">Na versturen krijg je een <b>persoonlijke link</b>. Bewaar die goed. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-close>Beginnen</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="/shared/api.js"></script>
+<script src="/shared/icons.js"></script>
 <script src="/shared/dialog.js"></script>
 <script src="/shared/me-badge.js"></script>
 <script src="/shared/version-check.js"></script>

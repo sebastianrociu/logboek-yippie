@@ -50,11 +50,28 @@
       </div>
     </div>
 
-    <div class="notice info">Kloppen je gegevens niet, of wil je je helemaal terugtrekken? Mail <a href="mailto:planning@yippievoordeklas.nl">planning@yippievoordeklas.nl</a>.</div>
+    <div class="notice info">Gegevens onjuist, of wil je je terugtrekken? Mail <a href="mailto:planning@yippievoordeklas.nl">planning@yippievoordeklas.nl</a>.</div>
   </div>
 </main>
 
+<dialog id="introDialog" aria-labelledby="introTitle">
+  <div class="dlg">
+    <h3 id="introTitle">Je persoonlijke indeling</h3>
+    <p class="dsub">Voor leerling en ouder.</p>
+    <ol class="intro-steps">
+      <li><b>Je inschrijving</b> staat bovenaan: school, niveau en je gekozen blokken en vakken.</li>
+      <li><b>Je sessies</b> verschijnen zodra Yippie de planning definitief maakt.</li>
+      <li><b>Afmelden</b> voor een sessie kan hier; Yippie krijgt daar bericht van.</li>
+    </ol>
+    <p class="intro-note">Bewaar de link uit je inschrijvingsbevestiging; dit is de enige toegang tot deze pagina. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-close>Aan de slag</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="/shared/api.js"></script>
+<script src="/shared/icons.js"></script>
 <script src="/shared/dialog.js"></script>
 <script src="/shared/me-badge.js"></script>
 <script src="/shared/version-check.js"></script>

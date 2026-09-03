@@ -20,7 +20,24 @@
   <div id="panel"><div class="card card-pad"><div class="empty">Laden...</div></div></div>
 </main>
 
+<dialog id="introDialog" aria-labelledby="introTitle">
+  <div class="dlg">
+    <h3 id="introTitle">Het overzicht van je school</h3>
+    <p class="dsub">Alleen-lezen. Je ziet uitsluitend leerlingen van je eigen school.</p>
+    <ol class="intro-steps">
+      <li><b>Per jaarlaag.</b> De leerlingen staan gegroepeerd; zoek op naam met het zoekveld.</li>
+      <li><b>Per leerling.</b> Klik een leerling aan voor de vakken, de blokken en de sessies.</li>
+      <li><b>Delen.</b> Druk de pagina af of bewaar 'm als pdf voor je dossier.</li>
+    </ol>
+    <p class="intro-note">Aanwezigheid per sessie komt in een volgende fase. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-close>Aan de slag</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="/shared/api.js"></script>
+<script src="/shared/icons.js"></script>
 <script src="/shared/dialog.js"></script>
 <script src="/shared/me-badge.js"></script>
 <script src="/shared/version-check.js"></script>

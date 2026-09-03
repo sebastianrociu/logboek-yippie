@@ -18,22 +18,38 @@
   <div class="stack">
     <div class="card card-pad">
       <h2>Waar wil je heen?</h2>
-      <p class="card-sub">Kies je rol. Inschrijven kan zonder account; de andere rollen loggen in.</p>
+      <p class="card-sub">Inschrijven kan zonder account. De andere rollen loggen in.</p>
       <div class="grid cols-2" style="margin-top:16px">
         <a class="btn btn-primary btn-block" href="/inschrijven/">Inschrijven</a>
         <button class="btn btn-ghost btn-block" data-login="beheerder">Beheer (Yippie)</button>
         <button class="btn btn-ghost btn-block" data-login="resource">Begeleider</button>
         <button class="btn btn-ghost btn-block" data-login="mentor">School of mentor</button>
       </div>
-      <p class="hint">Heb je een persoonlijke link gekregen voor je indeling? Open die link of ga naar <a href="/mijn/">Mijn indeling</a>.</p>
+      <p class="hint">Een persoonlijke link voor je indeling gekregen? Open die, of ga naar <a href="/mijn/">Mijn indeling</a>.</p>
     </div>
 
     <div class="notice info">
-      <b>Nieuw hier?</b> Yippie voor de klas organiseert examentrainingen en bijspijkersessies.
-      Leerlingen schrijven zich in per vak en jaarlaag; Yippie maakt daar sessies van en koppelt er een begeleider aan.
+      Yippie voor de klas geeft examentrainingen en bijspijksessies in het weekend. Leerlingen
+      schrijven zich in per vak; Yippie maakt daar groepen van met een begeleider erbij.
     </div>
   </div>
 </main>
+
+<dialog id="introDialog" aria-labelledby="introTitle">
+  <div class="dlg">
+    <h3 id="introTitle">Zo werkt Yippie voor de klas</h3>
+    <p class="dsub">Van inschrijven tot je persoonlijke indeling.</p>
+    <ol class="intro-steps">
+      <li><b>Leerling of ouder?</b> Kies <b>Inschrijven</b> en vul school, niveau en vak(ken) in. Je hoeft niet in te loggen.</li>
+      <li><b>Na je inschrijving</b> krijg je een persoonlijke link. Daarmee zie je later je sessies en kun je je afmelden.</li>
+      <li><b>Begeleider, school of mentor?</b> Log in met je Yippie-account.</li>
+    </ol>
+    <p class="intro-note">We bewaren alleen wat nodig is voor de planning en de terugkoppeling naar school. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-close>Aan de slag</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="loginDialog" aria-labelledby="loginTitle">
   <form class="dlg" id="loginForm">
@@ -56,6 +72,7 @@
 </dialog>
 
 <script src="/shared/api.js"></script>
+<script src="/shared/icons.js"></script>
 <script src="/shared/dialog.js"></script>
 <script src="/shared/me-badge.js"></script>
 <script src="/shared/cmdk.js"></script>

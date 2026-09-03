@@ -12,16 +12,26 @@
       el.setAttribute('role', 'status');
       el.setAttribute('aria-live', 'polite');
       el.setAttribute('popover', 'manual');
+      el.innerHTML = '<span class="ti"></span><span class="tt"></span>';
       document.body.appendChild(el);
     }
     return el;
   }
 
+  // Klein leidend icoon voor ok / fout; anders alleen tekst.
+  function toastIcon(kind) {
+    if (!YP.icon) return '';
+    if (kind === 'ok') return YP.icon('check', { size: 16 });
+    if (kind === 'bad') return YP.icon('alert', { size: 16 });
+    return '';
+  }
+
   var toastTimer = null;
   YP.toast = function (msg, kind) {
     var el = ensureToast();
-    el.textContent = msg;
     el.className = 'toast' + (kind ? ' ' + kind : '');
+    el.querySelector('.ti').innerHTML = toastIcon(kind);
+    el.querySelector('.tt').textContent = msg;
     if (el.showPopover) { try { el.hidePopover(); } catch (e) {} try { el.showPopover(); } catch (e) {} }
     // reflow so the transition re-triggers
     void el.offsetWidth;
@@ -79,4 +89,11 @@
     var b = e.target.closest && e.target.closest('[data-close]');
     if (b) { var d = b.closest('dialog'); if (d) d.close(); }
   });
+
+  // Uitleg-dialoog: open het <dialog id="introDialog"> van de pagina.
+  // me-badge.js tekent de ?-knop in de header en roept dit bij de eerste keer.
+  YP.help = function (id) {
+    var d = document.getElementById(id || 'introDialog');
+    if (d && d.showModal) { try { d.showModal(); } catch (e) {} }
+  };
 })(window);

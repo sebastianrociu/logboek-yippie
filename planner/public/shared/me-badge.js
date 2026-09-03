@@ -16,31 +16,50 @@
     if (!p.length) return '?';
     return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
   }
+  function voornaam(naam) {
+    return String(naam || '').trim().split(/\s+/)[0] || '';
+  }
+  function groetWoord() {
+    var h = new Date().getHours();
+    return h < 12 ? 'Goedemorgen' : (h < 18 ? 'Goedemiddag' : 'Goedenavond');
+  }
+  function langeDatum() {
+    var d = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    return d.charAt(0).toUpperCase() + d.slice(1);
+  }
 
   function render(host, me) {
     var title = host.getAttribute('data-title') || 'Yippie voor de klas';
-    var sub = host.getAttribute('data-sub') || 'Plannings- en inschrijfsysteem';
+    var heeftUitleg = !!document.getElementById('introDialog');
+    var helpBtn = heeftUitleg
+      ? '<button class="hdr-profile" id="yp-help" type="button" title="Hoe werkt het?" aria-label="Hoe werkt het?">' +
+        (YP.icon ? YP.icon('help', { size: 19 }) : '?') + '</button>'
+      : '';
     var right = '';
     if (me && me.rol) {
-      right =
+      right = helpBtn +
         '<span class="hdr-pill" id="yp-logout" role="button" tabindex="0">Uitloggen</span>' +
         '<span class="hdr-profile" title="' + YP.esc((me.naam || '') + ' - ' + (ROLNAAM[me.rol] || me.rol)) + '">' +
           YP.esc(initials(me.naam || me.rol)) + '</span>';
     } else {
-      right = '<a class="hdr-pill" href="/">Inloggen</a>';
+      right = helpBtn + '<a class="hdr-pill" href="/">Inloggen</a>';
     }
+    var greet = me && me.naam ? (groetWoord() + ' ' + voornaam(me.naam)) : 'Yippie voor de klas';
     host.className = 'topbar';
     host.innerHTML =
       '<div class="topbar-in">' +
         '<a class="brand" href="/" aria-label="Yippie voor de klas"><img src="' + LOGO + '" alt="Yippie"></a>' +
         '<div class="hello">' +
-          '<div class="greet">' + YP.esc(me && me.naam ? 'Ingelogd als ' + me.naam : 'Yippie voor de klas') + '</div>' +
+          '<div class="greet">' + YP.esc(greet) + '</div>' +
           '<h1>' + YP.esc(title) + '</h1>' +
-          '<div class="subline">' + YP.esc(sub) + '</div>' +
+          '<div class="subline">' + YP.esc(langeDatum()) + '</div>' +
         '</div>' +
         '<div class="hdr-actions">' + right + '</div>' +
       '</div>' +
       '<div class="hdr-wave"></div>';
+
+    var hb = document.getElementById('yp-help');
+    if (hb) hb.addEventListener('click', function () { if (YP.help) YP.help('introDialog'); });
 
     var lo = document.getElementById('yp-logout');
     if (lo) {
@@ -62,7 +81,16 @@
       var need = host.getAttribute('data-auth');
       if (need && (!me || me.rol !== need)) {
         location.href = '/?next=' + encodeURIComponent(location.pathname) + '&rol=' + encodeURIComponent(need);
+        return me;
       }
+      // Uitleg-dialoog de eerste keer automatisch tonen (per pagina onthouden).
+      try {
+        var vlag = 'yp_intro_' + location.pathname;
+        if (document.getElementById('introDialog') && !localStorage.getItem(vlag)) {
+          if (YP.help) YP.help('introDialog');
+          localStorage.setItem(vlag, '1');
+        }
+      } catch (e) {}
     }
     return me;
   })();

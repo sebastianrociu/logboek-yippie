@@ -18,7 +18,24 @@
   <div id="panel" class="stack"><div class="card card-pad"><div class="empty">Laden...</div></div></div>
 </main>
 
+<dialog id="introDialog" aria-labelledby="introTitle">
+  <div class="dlg">
+    <h3 id="introTitle">Jouw rooster en beschikbaarheid</h3>
+    <p class="dsub">Zo weet Yippie wanneer ze je kunnen inplannen.</p>
+    <ol class="intro-steps">
+      <li><b>Beschikbaarheid.</b> Tik de weekenddagen aan waarop je kunt, per ochtend of middag.</li>
+      <li><b>Voorkeuren.</b> Geef aan welke vakken je het liefst geeft.</li>
+      <li><b>Je sessies.</b> Zodra het rooster rond is, zie je hier wanneer en waar je verwacht wordt.</li>
+    </ol>
+    <p class="intro-note">Je vakken en jaarlagen stelt Yippie in. Klopt daar iets niet? Geef het door. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-close>Aan de slag</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="/shared/api.js"></script>
+<script src="/shared/icons.js"></script>
 <script src="/shared/dialog.js"></script>
 <script src="/shared/me-badge.js"></script>
 <script src="/shared/version-check.js"></script>

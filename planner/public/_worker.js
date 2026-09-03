@@ -9,7 +9,7 @@
    inschrijvingen (append) zodat gelijktijdige schrijfacties niet verdwijnen.
    ========================================================================== */
 
-const VERSION = '2026-09-04.1';
+const VERSION = '2026-09-04.2';
 
 const KEYS = {
   config: 'config',
