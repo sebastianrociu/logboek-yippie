@@ -1,0 +1,25 @@
+{
+  "name": "Yippie voor de klas - planning",
+  "short_name": "Yippie Planner",
+  "description": "Inschrijven, roosteren en aanwezigheid voor Yippie voor de klas.",
+  "lang": "nl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#E8735A",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23E8735A'/%3E%3Cg transform='translate(256 236)'%3E%3Cpath d='M-120-78Q-118-90-106-92L-18-98Q-8-98-4-88L-4 78Q-8 86-18 84L-106 78Q-118 76-120 64Z' fill='%23fff'/%3E%3Cpath d='M120-78Q118-90 106-92L18-98Q8-98 4-88L4 78Q8 86 18 84L106 78Q118 76 120 64Z' fill='%23fff'/%3E%3Crect x='-6' y='-94' width='12' height='172' fill='%23C95A43'/%3E%3C/g%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23E8735A'/%3E%3Cg transform='translate(256 236)'%3E%3Cpath d='M-120-78Q-118-90-106-92L-18-98Q-8-98-4-88L-4 78Q-8 86-18 84L-106 78Q-118 76-120 64Z' fill='%23fff'/%3E%3Cpath d='M120-78Q118-90 106-92L18-98Q8-98 4-88L4 78Q8 86 18 84L106 78Q118 76 120 64Z' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
