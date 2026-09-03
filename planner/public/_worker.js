@@ -9,7 +9,7 @@
    inschrijvingen (append) zodat gelijktijdige schrijfacties niet verdwijnen.
    ========================================================================== */
 
-const VERSION = '2026-09-03.1';
+const VERSION = '2026-09-04.1';
 
 const KEYS = {
   config: 'config',
@@ -20,10 +20,12 @@ const KEYS = {
   aanwezigheid: 'aanwezigheid',
 };
 
+const DAGDELEN = ['ochtend', 'middag', 'avond'];
+
 const DEFAULTS = {
   config: {
     _rev: 0,
-    scholen: [], vakken: [], jaarlagen: [], periodes: [],
+    scholen: [], vakken: [], jaarlagen: [], blokken: [],
     instellingen: { groepMin: 4, groepMax: 12 },
   },
   resources: { _rev: 0, items: [], tombstones: {} },
@@ -143,12 +145,15 @@ async function verifySession(env, token) {
   if (!payload.exp || payload.exp < Date.now()) return null;
   return payload;
 }
-function cookieHeader(token, maxAgeSec) {
+function cookieHeader(token, maxAgeSec, secure) {
   const parts = [
     'yp_sess=' + (token || ''),
-    'Path=/', 'HttpOnly', 'Secure', 'SameSite=Lax',
+    'Path=/', 'HttpOnly', 'SameSite=Lax',
     'Max-Age=' + (token ? maxAgeSec : 0),
   ];
+  // Secure alleen op https; anders weigeren browsers (o.a. Safari) de cookie op
+  // http://localhost en werkt inloggen lokaal niet.
+  if (secure) parts.push('Secure');
   return parts.join('; ');
 }
 function readCookie(req, name) {
@@ -197,37 +202,61 @@ function stubMail(kind, to, data) {
 function str(v, max = 200) { return String(v == null ? '' : v).trim().slice(0, max); }
 function cleanEmail(v) { const s = str(v, 254).toLowerCase(); return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s) ? s : ''; }
 
+// Vaknaam normaliseren voor groeperen: "  Wiskunde A " en "wiskunde a" horen bij
+// elkaar. Toont de eerst ingevoerde schrijfwijze, groepeert op de genormaliseerde.
+function vakNaam(v) { return str(v, 60).replace(/\s+/g, ' '); }
+function vakKey(v) { return vakNaam(v).toLowerCase(); }
+
 function validateInschrijving(body, config) {
-  const schoolIds = new Set(config.scholen.map((s) => s.id));
-  const vakIds = new Set(config.vakken.map((v) => v.id));
-  const jaarIds = new Set(config.jaarlagen.map((j) => j.id));
-  const periodeIds = new Set(config.periodes.map((p) => p.id));
+  const schoolIds = new Set((config.scholen || []).map((s) => s.id));
+  const jaarIds = new Set((config.jaarlagen || []).map((j) => j.id));
+  const blokById = new Map((config.blokken || []).map((b) => [b.id, b]));
 
   const schoolId = str(body.schoolId, 40);
   const jaarlaagId = str(body.jaarlaagId, 40);
-  const vakIdsIn = Array.isArray(body.vakIds) ? body.vakIds.map((x) => str(x, 40)).filter((x) => vakIds.has(x)) : [];
   const leerlingNaam = str(body.leerling && body.leerling.naam, 120);
   const ouderEmail = cleanEmail(body.ouder && body.ouder.email);
   const leerlingEmail = cleanEmail(body.leerling && body.leerling.email);
 
+  // keuzes: één per gekozen blok, met dag + dagdeel + vakken
+  const keuzesIn = Array.isArray(body.keuzes) ? body.keuzes : [];
+  const keuzes = [];
+  for (const k of keuzesIn) {
+    const blok = blokById.get(str(k && k.blokId, 40));
+    if (!blok) continue;
+    const dagenVanBlok = Array.isArray(blok.dagen) && blok.dagen.length ? blok.dagen : ['za', 'zo'];
+    let dag = str(k.dag, 4);
+    if (!dagenVanBlok.includes(dag)) dag = dagenVanBlok[0];
+    const dagdeel = DAGDELEN.includes(str(k.dagdeel, 10)) ? str(k.dagdeel, 10) : 'ochtend';
+    const seen = new Set();
+    const vakken = (Array.isArray(k.vakken) ? k.vakken : [])
+      .map(vakNaam).filter((v) => v && !seen.has(vakKey(v)) && seen.add(vakKey(v)))
+      .slice(0, 15);
+    if (!vakken.length) continue;
+    keuzes.push({ blokId: blok.id, dag, dagdeel, vakken });
+  }
+  // dubbele blok-keuzes samenvoegen (één keuze per blok)
+  const perBlok = new Map();
+  for (const k of keuzes) {
+    if (perBlok.has(k.blokId)) {
+      const cur = perBlok.get(k.blokId);
+      const seen = new Set(cur.vakken.map(vakKey));
+      for (const v of k.vakken) if (!seen.has(vakKey(v))) { cur.vakken.push(v); seen.add(vakKey(v)); }
+    } else perBlok.set(k.blokId, k);
+  }
+  const keuzesClean = Array.from(perBlok.values());
+
   const fouten = [];
   if (!schoolIds.has(schoolId)) fouten.push('Kies een geldige school.');
   if (!jaarIds.has(jaarlaagId)) fouten.push('Kies een geldige jaarlaag.');
-  if (!vakIdsIn.length) fouten.push('Kies minstens een vak.');
+  if (!keuzesClean.length) fouten.push('Kies minstens een blok met dag en vak(ken).');
   if (!leerlingNaam) fouten.push('Vul de naam van de leerling in.');
   if (!ouderEmail && !leerlingEmail) fouten.push('Vul een e-mailadres in (leerling of ouder).');
 
-  const voorkeurPeriode = str(body.voorkeur && body.voorkeur.periodeId, 40);
   const clean = {
-    schoolId, jaarlaagId, vakIds: vakIdsIn,
-    voorkeur: {
-      dagen: Array.isArray(body.voorkeur && body.voorkeur.dagen)
-        ? body.voorkeur.dagen.map((d) => str(d, 20)).filter((d) => ['za', 'zo', 'wk'].includes(d)) : [],
-      dagdelen: Array.isArray(body.voorkeur && body.voorkeur.dagdelen)
-        ? body.voorkeur.dagdelen.map((d) => str(d, 20)).filter((d) => ['ochtend', 'middag'].includes(d)) : [],
-      periodeId: periodeIds.has(voorkeurPeriode) ? voorkeurPeriode : '',
-      toelichting: str(body.voorkeur && body.voorkeur.toelichting, 500),
-    },
+    schoolId, jaarlaagId,
+    keuzes: keuzesClean,
+    toelichting: str(body.toelichting, 500),
     leerling: { naam: leerlingNaam, email: leerlingEmail, tel: str(body.leerling && body.leerling.tel, 30) },
     ouder: {
       naam: str(body.ouder && body.ouder.naam, 120), email: ouderEmail, tel: str(body.ouder && body.ouder.tel, 30),
@@ -243,6 +272,7 @@ async function handleApi(request, env) {
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const method = request.method;
   const isDev = (env.ENV || 'production') === 'dev';
+  const secure = url.protocol === 'https:' || (request.headers.get('x-forwarded-proto') || '') === 'https';
   const body = ['POST', 'PUT', 'PATCH'].includes(method)
     ? await request.json().catch(() => ({})) : {};
 
@@ -282,18 +312,18 @@ async function handleApi(request, env) {
       sid: user.schoolId || null, rid: user.resourceId || null,
       exp: Date.now() + maxAge * 1000,
     });
-    return json({ rol: user.rol, naam: user.naam }, 200, { 'set-cookie': cookieHeader(token, maxAge) });
+    return json({ rol: user.rol, naam: user.naam }, 200, { 'set-cookie': cookieHeader(token, maxAge, secure) });
   }
 
   if (path === '/api/logout' && method === 'POST') {
-    return json({ ok: true }, 200, { 'set-cookie': cookieHeader('', 0) });
+    return json({ ok: true }, 200, { 'set-cookie': cookieHeader('', 0, secure) });
   }
 
   /* --- publieke inschrijving --- */
   if (path === '/api/config-public' && method === 'GET') {
     const c = await readJSON(env, KEYS.config);
     return json({
-      scholen: c.scholen, vakken: c.vakken, jaarlagen: c.jaarlagen, periodes: c.periodes,
+      scholen: c.scholen, vakken: c.vakken, jaarlagen: c.jaarlagen, blokken: c.blokken || [],
     });
   }
 
@@ -322,17 +352,20 @@ async function handleApi(request, env) {
     const rec = ins.items.find((x) => x.token === token);
     if (!rec) throw new HttpError(404, 'niet gevonden');
     const naam = (n) => (config[n] || []).reduce((m, x) => (m[x.id] = x.label || x.naam, m), {});
-    const vakN = naam('vakken'), schoolN = naam('scholen'), jaarN = naam('jaarlagen');
+    const schoolN = naam('scholen'), jaarN = naam('jaarlagen'), blokN = naam('blokken');
     const sessies = (rooster.status === 'definitief' ? rooster.sessies : [])
-      .filter((s) => s.leerlingIds.includes(rec.id))
+      .filter((s) => (s.leerlingIds || []).includes(rec.id))
       .map((s) => ({
-        id: s.id, datum: s.datum, dagdeel: s.dagdeel, locatie: s.locatie,
-        vak: vakN[s.vakId] || '', begeleider: s.begeleiderNaam || '',
+        id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie,
+        blok: blokN[s.blokId] || '', vak: s.vak || '', begeleider: s.begeleiderNaam || '',
       }));
     return json({
       inschrijving: {
         leerling: rec.leerling.naam, school: schoolN[rec.schoolId] || '', jaarlaag: jaarN[rec.jaarlaagId] || '',
-        vakken: rec.vakIds.map((v) => vakN[v]).filter(Boolean), status: rec.status,
+        status: rec.status, toelichting: rec.toelichting || '',
+        keuzes: (rec.keuzes || []).map((k) => ({
+          blok: blokN[k.blokId] || '', dag: k.dag, dagdeel: k.dagdeel, vakken: k.vakken || [],
+        })),
       },
       roosterStatus: rooster.status, sessies,
     });
@@ -360,7 +393,7 @@ async function handleApi(request, env) {
 
     if (sub === 'config') {
       if (method === 'GET') return json(await readJSON(env, KEYS.config));
-      if (method === 'PUT') return json(await putSection(env, KEYS.config, body, ['scholen', 'vakken', 'jaarlagen', 'periodes']));
+      if (method === 'PUT') return json(await putSection(env, KEYS.config, body, ['scholen', 'vakken', 'jaarlagen', 'blokken']));
     }
     if (sub === 'resources') {
       if (method === 'GET') return json(await readJSON(env, KEYS.resources));
@@ -431,10 +464,10 @@ async function handleApi(request, env) {
         readJSON(env, KEYS.resources), readJSON(env, KEYS.rooster), readJSON(env, KEYS.config),
       ]);
       const me = res.items.find((x) => x.id === rid) || null;
-      const vakN = (config.vakken || []).reduce((m, x) => (m[x.id] = x.naam, m), {});
+      const blokN = (config.blokken || []).reduce((m, x) => (m[x.id] = x.label, m), {});
       const sessies = rooster.sessies
         .filter((s) => s.resourceId === rid)
-        .map((s) => ({ id: s.id, datum: s.datum, dagdeel: s.dagdeel, locatie: s.locatie, vak: vakN[s.vakId] || '', aantal: s.leerlingIds.length }));
+        .map((s) => ({ id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie, blok: blokN[s.blokId] || '', vak: s.vak || '', aantal: (s.leerlingIds || []).length }));
       return json({ resource: me, sessies, roosterStatus: rooster.status });
     }
     if (sub === 'beschikbaarheid' && method === 'PUT') {
@@ -443,7 +476,7 @@ async function handleApi(request, env) {
         if (!me) throw new HttpError(404, 'resource niet gevonden');
         if (Array.isArray(body.beschikbaarheid)) {
           me.beschikbaarheid = body.beschikbaarheid.slice(0, 400).map((b) => ({
-            datum: str(b.datum, 10), dagdeel: ['ochtend', 'middag'].includes(b.dagdeel) ? b.dagdeel : 'ochtend',
+            datum: str(b.datum, 10), dagdeel: DAGDELEN.includes(b.dagdeel) ? b.dagdeel : 'ochtend',
           }));
         }
         if (body.maxPerWeekend != null) me.maxPerWeekend = Math.max(0, Math.min(20, Number(body.maxPerWeekend) || 0));
@@ -465,18 +498,21 @@ async function handleApi(request, env) {
       const [ins, rooster, config] = await Promise.all([
         readJSON(env, KEYS.inschrijvingen), readJSON(env, KEYS.rooster), readJSON(env, KEYS.config),
       ]);
-      const vakN = (config.vakken || []).reduce((m, x) => (m[x.id] = x.naam, m), {});
       const jaarN = (config.jaarlagen || []).reduce((m, x) => (m[x.id] = x.label, m), {});
+      const blokN = (config.blokken || []).reduce((m, x) => (m[x.id] = x.label, m), {});
       const schoolNaam = (config.scholen.find((s) => s.id === eigenSchool) || {}).naam || '';
       const leerlingen = ins.items
         .filter((r) => r.schoolId === eigenSchool)
         .map((r) => {
           const sessies = (rooster.status === 'definitief' ? rooster.sessies : [])
-            .filter((s) => s.leerlingIds.includes(r.id))
-            .map((s) => ({ datum: s.datum, dagdeel: s.dagdeel, vak: vakN[s.vakId] || '' }));
+            .filter((s) => (s.leerlingIds || []).includes(r.id))
+            .map((s) => ({ datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, blok: blokN[s.blokId] || '', vak: s.vak || '' }));
+          const vakken = [];
+          for (const k of (r.keuzes || [])) for (const v of k.vakken) if (!vakken.includes(v)) vakken.push(v);
           return {
             leerling: r.leerling.naam, jaarlaag: jaarN[r.jaarlaagId] || '',
-            vakken: r.vakIds.map((v) => vakN[v]).filter(Boolean),
+            vakken,
+            blokken: (r.keuzes || []).map((k) => (blokN[k.blokId] || '') + ' (' + k.dag + ' ' + k.dagdeel + ')'),
             mentor: r.mentor.naam || '', status: r.status,
             ingedeeld: sessies.length, sessies,
           };
@@ -504,9 +540,21 @@ async function seed(env) {
   const config = {
     _rev: 0,
     scholen: [{ id: 'sch_lyceum', naam: 'Stedelijk Lyceum' }, { id: 'sch_college', naam: 'Noorderpoort College' }],
-    vakken: [{ id: 'vak_wi', naam: 'Wiskunde' }, { id: 'vak_na', naam: 'Natuurkunde' }, { id: 'vak_en', naam: 'Engels' }],
-    jaarlagen: [{ id: 'jl_3h', label: '3 havo' }, { id: 'jl_4v', label: '4 vwo' }, { id: 'jl_4t', label: '4 vmbo-tl' }],
-    periodes: [{ id: 'p_jan', label: 'Januari - maart', van: '2027-01-10', tot: '2027-03-28' }],
+    vakken: [
+      { id: 'vak_wi', naam: 'Wiskunde' }, { id: 'vak_na', naam: 'Natuurkunde' },
+      { id: 'vak_sk', naam: 'Scheikunde' }, { id: 'vak_en', naam: 'Engels' },
+      { id: 'vak_ne', naam: 'Nederlands' }, { id: 'vak_bio', naam: 'Biologie' }, { id: 'vak_ec', naam: 'Economie' },
+    ],
+    jaarlagen: [
+      { id: 'jl_3h', label: '3 havo' }, { id: 'jl_4h', label: '4 havo' }, { id: 'jl_5h', label: '5 havo' },
+      { id: 'jl_4v', label: '4 vwo' }, { id: 'jl_5v', label: '5 vwo' }, { id: 'jl_6v', label: '6 vwo' },
+      { id: 'jl_3t', label: '3 vmbo-tl' }, { id: 'jl_4t', label: '4 vmbo-tl' },
+    ],
+    blokken: [
+      { id: 'blok1', label: 'Blok 1 (na de herfstvakantie)', van: '2026-10-26', tot: '2026-12-13', dagen: ['za', 'zo'] },
+      { id: 'blok2', label: 'Blok 2 (na de kerstvakantie)', van: '2027-01-11', tot: '2027-02-14', dagen: ['za', 'zo'] },
+      { id: 'blok3', label: 'Blok 3 (voorjaar, richting examens)', van: '2027-03-02', tot: '2027-04-19', dagen: ['za', 'zo'] },
+    ],
     instellingen: { groepMin: 4, groepMax: 12 },
   };
   await mutate(env, KEYS.config, () => config);
@@ -526,26 +574,33 @@ async function seed(env) {
   await mutate(env, KEYS.resources, () => ({
     _rev: 0, tombstones: {},
     items: [
-      { id: 'res_1', naam: 'K. Jansen', email: 'trainer@yippie.test', vakIds: ['vak_wi', 'vak_na'], jaarlaagIds: ['jl_3h', 'jl_4v'], maxPerWeekend: 3,
-        beschikbaarheid: [{ datum: '2027-01-17', dagdeel: 'ochtend' }, { datum: '2027-01-24', dagdeel: 'ochtend' }] },
-      { id: 'res_2', naam: 'L. Bakker', email: 'lbakker@yippie.test', vakIds: ['vak_en'], jaarlaagIds: ['jl_3h', 'jl_4t'], maxPerWeekend: 2,
-        beschikbaarheid: [{ datum: '2027-01-18', dagdeel: 'middag' }] },
+      { id: 'res_1', naam: 'K. Jansen', email: 'trainer@yippie.test', vakIds: ['vak_wi', 'vak_na'], jaarlaagIds: ['jl_3h', 'jl_4h', 'jl_4v'], maxPerWeekend: 3,
+        beschikbaarheid: [{ datum: '2026-11-07', dagdeel: 'ochtend' }, { datum: '2026-11-14', dagdeel: 'ochtend' }] },
+      { id: 'res_2', naam: 'L. Bakker', email: 'lbakker@yippie.test', vakIds: ['vak_en', 'vak_ne'], jaarlaagIds: ['jl_3h', 'jl_4t', 'jl_5h'], maxPerWeekend: 2,
+        beschikbaarheid: [{ datum: '2026-11-08', dagdeel: 'middag' }] },
     ],
   }));
 
   const mk = (over) => ({
     id: uid(), token: uid(24), ts: new Date().toISOString(), status: 'nieuw',
-    voorkeur: { dagen: ['za'], dagdelen: ['ochtend'], periodeId: 'p_jan', toelichting: '' },
-    ouder: { naam: '', email: 'ouder@example.test', tel: '' },
+    toelichting: '',
+    ouder: { naam: 'Ouder van ' + (over.leerling ? over.leerling.naam : ''), email: 'ouder@example.test', tel: '06 1234 5678' },
     mentor: { naam: 'M. de Wit', email: 'mentor@lyceum.test' }, ...over,
   });
   await mutate(env, KEYS.inschrijvingen, () => ({
     _rev: 0, tombstones: {},
     items: [
-      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', vakIds: ['vak_wi'], leerling: { naam: 'Sanne de Vries', email: '', tel: '' } }),
-      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', vakIds: ['vak_wi'], leerling: { naam: 'Tim Post', email: '', tel: '' } }),
-      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', vakIds: ['vak_wi', 'vak_na'], leerling: { naam: 'Noor Smit', email: '', tel: '' } }),
-      mk({ schoolId: 'sch_college', jaarlaagId: 'jl_4v', vakIds: ['vak_na'], leerling: { naam: 'Daan Mulder', email: '', tel: '' } }),
+      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', leerling: { naam: 'Sanne de Vries', email: '', tel: '' },
+        keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde'] }] }),
+      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', leerling: { naam: 'Tim Post', email: '', tel: '' },
+        keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['wiskunde'] }] }),
+      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', leerling: { naam: 'Noor Smit', email: '', tel: '' },
+        keuzes: [
+          { blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde', 'Natuurkunde'] },
+          { blokId: 'blok2', dag: 'zo', dagdeel: 'middag', vakken: ['Natuurkunde'] },
+        ] }),
+      mk({ schoolId: 'sch_college', jaarlaagId: 'jl_4v', leerling: { naam: 'Daan Mulder', email: '', tel: '' },
+        keuzes: [{ blokId: 'blok1', dag: 'zo', dagdeel: 'ochtend', vakken: ['Natuurkunde'] }] }),
     ],
   }));
   await mutate(env, KEYS.rooster, () => structuredClone(DEFAULTS.rooster));

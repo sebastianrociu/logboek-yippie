@@ -26,7 +26,7 @@
   --sh-btn:0 2px 8px rgba(232,115,90,.28);
   --sh-btn-h:0 4px 14px rgba(232,115,90,.36);
   --sh-dlg:0 25px 60px rgba(0,0,0,.3);
-  --maxw:1180px;
+  --maxw:1280px;
 }
 
 *{box-sizing:border-box;font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -68,13 +68,15 @@ a{color:var(--coral-dark)}
 html.readonly [data-write]{display:none!important}
 
 /* ===== Layout =========================================================== */
-.wrap{max-width:var(--maxw);margin:0 auto;padding:18px 16px 96px}
-.wrap-narrow{max-width:640px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:18px clamp(14px,4vw,32px) 96px}
+.wrap-narrow{max-width:900px}
 .row{display:flex;gap:12px;flex-wrap:wrap}
 .grid{display:grid;gap:16px}
 .grid.cols-2{grid-template-columns:repeat(2,1fr)}
 .grid.cols-3{grid-template-columns:repeat(3,1fr)}
-@media(max-width:820px){.grid.cols-2,.grid.cols-3{grid-template-columns:1fr}}
+.grid.cols-4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:1000px){.grid.cols-3,.grid.cols-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr}}
 .spread{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .stack{display:flex;flex-direction:column;gap:14px}
 
@@ -100,7 +102,8 @@ html.readonly [data-write]{display:none!important}
 
 /* ===== Knoppen ========================================================== */
 button{font-family:inherit;cursor:pointer}
-.btn{border:none;border-radius:var(--r-s);font-weight:700;font-size:13.5px;padding:11px 18px;line-height:1;transition:background .13s,color .13s,box-shadow .13s,transform .13s;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.btn{border:none;border-radius:var(--r-s);font-weight:700;font-size:13.5px;padding:11px 18px;line-height:1;transition:background .13s,color .13s,box-shadow .13s,transform .13s;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;justify-content:center;text-decoration:none}
+.btn:hover{text-decoration:none}
 .btn:active{transform:translateY(1px)}
 .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
 .btn-primary{background:var(--coral);color:#fff;box-shadow:var(--sh-btn)}
@@ -135,6 +138,43 @@ textarea{resize:vertical;min-height:84px;line-height:1.55}
 .chip-check input:checked + span{background:var(--coral-light);border-color:var(--coral);color:var(--coral-dark)}
 .chip-check input:focus-visible + span{outline:2px solid var(--coral);outline-offset:2px}
 
+/* Segmented control (dag / dagdeel keuze) */
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;background:var(--divider);border-radius:999px;padding:4px}
+.seg label{position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:inline-block;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;color:var(--ink-2);cursor:pointer;user-select:none;white-space:nowrap}
+.seg input:checked + span{background:var(--surface);color:var(--coral-dark);box-shadow:var(--sh-card)}
+.seg input:focus-visible + span{outline:2px solid var(--coral);outline-offset:2px}
+
+/* Horizontale "week": dagen als kolommen, dagdelen als rijen. Radio per cel. */
+.weekgrid{display:grid;grid-auto-flow:column;gap:10px;overflow-x:auto;padding-bottom:4px}
+.weekcol{min-width:150px;flex:1}
+.weekcol > .wc-day{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mute-2);text-align:center;padding:6px 0 8px}
+.weekcell{position:relative;display:block}
+.weekcell input{position:absolute;opacity:0;pointer-events:none}
+.weekcell span{display:block;text-align:center;padding:12px 8px;margin-bottom:8px;border:1.5px solid var(--line);border-radius:var(--r-m);font-size:13px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:border-color .12s,background .12s}
+.weekcell:hover span{border-color:#D3D8E0}
+.weekcell input:checked + span{background:var(--coral-light);border-color:var(--coral);color:var(--coral-dark)}
+.weekcell input:focus-visible + span{outline:2px solid var(--coral);outline-offset:2px}
+.weekcell input:disabled + span{opacity:.4;cursor:not-allowed}
+
+/* Twee kolommen die onder elkaar vallen op smal scherm (leerling / ouder) */
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:720px){.split2{grid-template-columns:1fr}}
+.subcard{border:1px solid var(--line);border-radius:var(--r-m);padding:14px}
+.subcard > h3{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.subcard .field:last-child{margin-bottom:0}
+
+/* Blok-kaart in het inschrijfformulier */
+.blokcard{border:1.5px solid var(--line);border-radius:var(--r-m);overflow:hidden;transition:border-color .12s}
+.blokcard.on{border-color:var(--coral)}
+.blokcard > .bc-head{display:flex;align-items:flex-start;gap:12px;padding:14px;cursor:pointer}
+.blokcard > .bc-head input{width:19px;height:19px;margin-top:1px;accent-color:var(--coral);flex-shrink:0}
+.blokcard > .bc-head .bc-t{font-weight:800;color:var(--ink);font-size:14px}
+.blokcard > .bc-head .bc-s{font-size:12px;color:var(--mute);margin-top:2px}
+.blokcard > .bc-body{padding:0 14px 14px;border-top:1px solid var(--divider);margin-top:0}
+.blokcard > .bc-body .field{margin-top:14px;margin-bottom:0}
+
 /* ===== Lijst / tabel =================================================== */
 .list{display:flex;flex-direction:column}
 .list-row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-top:1px solid var(--divider);font-size:13.5px}
@@ -168,7 +208,7 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .dlg-actions .left{margin-right:auto}
 
 /* ===== Toast (Popover-API, top-layer) ================================== */
-.toast{inset:auto;position:fixed;left:50%;top:14px;margin:0;border:0;transform:translateX(-50%) translateY(-18px);background:#1A1A1A;color:#fff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:90vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100003}
+.toast{inset:auto;position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));top:auto;margin:0;border:0;transform:translateX(-50%) translateY(18px);background:#1A1A1A;color:#fff;font-size:13px;font-weight:600;padding:11px 20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:90vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100003}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.bad{background:#7F1D1D}
 .toast.ok{background:#14532D}
