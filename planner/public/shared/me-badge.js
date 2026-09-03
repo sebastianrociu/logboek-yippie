@@ -5,9 +5,9 @@
    Classic script; laad na shared/api.js. */
 (function (w) {
   var YP = w.YP || (w.YP = {});
-  // Boek-silhouet (transparante achtergrond). De topbar-CSS zet er
+  // Yippie-logo uit het logboek. De topbar-CSS zet er
   // filter:brightness(0) invert(1) op zodat het wit wordt op de coral header.
-  var LOGO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBkPSJNMjU2IDEzMCBDMjAwIDEwMCAxMjAgOTYgODQgMTA0IFY0MDAgQzEyMCAzOTIgMjAwIDM5NiAyNTYgNDIwIFoiIGZpbGw9IiNFODczNUEiLz48cGF0aCBkPSJNMjU2IDEzMCBDMzEyIDEwMCAzOTIgOTYgNDI4IDEwNCBWNDAwIEMzOTIgMzkyIDMxMiAzOTYgMjU2IDQyMCBaIiBmaWxsPSIjRTg3MzVBIi8+PHJlY3QgeD0iMjQ2IiB5PSIxMjgiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyOTYiIHJ4PSI2IiBmaWxsPSIjQzk1QTQzIi8+PC9zdmc+';
+  var LOGO = '/assets/logo.png';
 
   var ROLNAAM = { beheerder: 'Beheerder', resource: 'Begeleider', mentor: 'Mentor', ouder: 'Leerling of ouder' };
 
@@ -32,7 +32,7 @@
     host.className = 'topbar';
     host.innerHTML =
       '<div class="topbar-in">' +
-        '<a class="brand" href="/"><img src="' + LOGO + '" alt=""><span class="bname">Yippie</span></a>' +
+        '<a class="brand" href="/" aria-label="Yippie voor de klas"><img src="' + LOGO + '" alt="Yippie"></a>' +
         '<div class="hello">' +
           '<div class="greet">' + YP.esc(me && me.naam ? 'Ingelogd als ' + me.naam : 'Yippie voor de klas') + '</div>' +
           '<h1>' + YP.esc(title) + '</h1>' +
