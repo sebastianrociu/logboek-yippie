@@ -103,19 +103,33 @@ leerlingnummer (AVG, zie hoofd-`CLAUDE.md`).
   "sessies": [{
     "id": "s_ab12cd",
     "vak": "Wiskunde", "jaarlaagId": "jl_3h", "schoolId": "sch_lyceum",
-    "blokId": "blok1", "dag": "za", "dagdeel": "ochtend",
+    "blokId": "blok1", "dag": "za", "dagdeel": "ochtend", "traject": "bijspijker",
     "datum": "2026-11-07", "locatie": "Lokaal 2",
     "resourceId": "res_1", "begeleiderNaam": "K. Jansen",
     "leerlingIds": ["a1b2c3", "d4e5f6"],
-    "min": 4, "max": 12
+    "min": 4, "max": 12,
+    "bron": "voorstel",                       // voorstel | handmatig
+    "buitenBeschikbaarheid": false            // begeleider buiten z'n eigen beschikbaarheid ingepland
   }],
-  "conflicten": []
+  "conflicten": [{ "id": "k_...", "type": "geen-gekwalificeerde", "severity": "hoog",
+                   "titel": "...", "detail": "...", "ref": { "kind": "begeleider", "id": "" } }]
 }
 ```
 
 Een sessie hoort bij precies één groep: `schoolId | jaarlaagId | blokId | dag |
-dagdeel | vak (genormaliseerd)`. `datum` is de concrete kalenderdatum die de
-planner invult; `dag` blijft de weekenddag-voorkeur.
+dagdeel | vak (genormaliseerd) | traject?` (`traject` telt mee als
+`config.instellingen.splitOpTraject`). `datum` is de concrete kalenderdatum; `dag`
+blijft de weekenddag. `PUT /api/beheer/rooster` vervangt de sessies volledig
+(met `_rev`-check), zodat een verwijderde sessie ook echt weg blijft.
+
+`POST /api/beheer/rooster/genereer` (`{blokId?, modus:'volledig'|'aanvullen',
+bevestigDefinitief?}`) draait de greedy one-pass: bundel -> splits > `groepMax` ->
+sorteer op schaarste -> wijs de begeleider met de meeste resterende
+weekend-capaciteit toe die het vak/de jaarlaag kan en op datum+dagdeel
+beschikbaar is (`vakVoorkeuren` als zachte tiebreak). `GET
+/api/beheer/rooster/analyse` geeft dezelfde knelpunten + groep-info voor het
+huidige rooster, zonder toe te wijzen. `conflicten` zijn nu objecten met
+`severity` (`hoog`/`midden`/`laag`) en een `ref` naar de plek om het op te lossen.
 
 `GET /api/mijn` en `GET /api/school/overzicht` tonen sessies pas als
 `status === "definitief"`.

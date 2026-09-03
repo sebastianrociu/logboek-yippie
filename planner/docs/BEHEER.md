@@ -7,36 +7,48 @@ blokken, begeleiders of accounts.
 ## Tabbladen
 
 ### Inschrijvingen
-Alle binnengekomen inschrijvingen, nieuwste bovenaan. Per rij zie je school,
-jaarlaag, de gekozen blokken (met dag, dagdeel en vakken per blok) en het
-contactadres. De statuskolom (`nieuw` / `ingepland` / `afgerond` /
-`geannuleerd`) pas je hier direct aan. Een inschrijving met status `geannuleerd`
-telt niet meer mee in de groepeer-hint.
+Alle binnengekomen inschrijvingen, gegroepeerd op **school -> jaarlaag** (klik een
+jaarlaag open/dicht). Bovenaan staat een **Aandacht**-strook met de punten die
+eerst moeten: een vrij ingetypte school die nog gekoppeld moet worden, een
+inschrijving zonder gekoppelde jaarlaag, een vak dat niet in de vakkenlijst
+staat, of een leerling die (nog) in geen sessie zit. Per inschrijving zie je het
+traject, de mentor, de keuzes als chips en het contactadres; de status
+(`nieuw` / `ingepland` / `afgerond` / `geannuleerd`) loopt bij het genereren
+vanzelf door van `nieuw` naar `ingepland` en je kunt 'm hier bijstellen. Bij een
+vrije school kies je in dezelfde rij "Koppel aan school" (bestaande school of
+"Maak school ..."); alle inschrijvingen met diezelfde schoolnaam gaan mee.
+`geannuleerd` telt niet meer mee bij het groeperen.
 
-### Sessies en rooster
+### Planning
 Het hart van fase 1.
 
 - **Status en definitief maken.** Zolang het rooster `concept` is, ziet niemand
   buiten Yippie de indeling. "Rooster definitief maken" zet de status om en zet
-  voor elke ingedeelde leerling een indelingsmail klaar (fase 1: de mail wordt
-  gelogd, niet echt verstuurd). Je kunt daarna nog wijzigen en opnieuw versturen.
-- **Knelpunten.** Automatisch gesignaleerd: een vak/jaarlaag zonder gekwalificeerde
-  of beschikbare begeleider, groepen onder de minimale groepsgrootte, leerlingen
-  die in geen enkele sessie zitten, en begeleiders boven hun max per weekend.
-- **Groepeer-hint.** Inschrijvingen gebundeld op school + jaarlaag + blok + dag +
-  dagdeel + vak. Vaknamen worden genormaliseerd, dus "wiskunde" en "Wiskunde"
-  vallen samen. "Maak sessie(s)" maakt per groep een sessie aan en splitst
-  automatisch zodra de groep groter is dan het ingestelde maximum.
-- **Sessies.** Blok, dag, dagdeel, vak en school liggen vast per groep. Per sessie
-  vul je de concrete kalenderdatum, locatie en begeleider in en vink je de
-  leerlingen aan (kandidaten volgen uit hun blok-keuze). De begeleider-keuzelijst
-  laat zien wie gekwalificeerd is voor dat vak en die jaarlaag.
+  voor elke ingedeelde leerling een indelingsmail klaar (fase 1: gelogd, niet
+  echt verstuurd). Je kunt daarna nog wijzigen en opnieuw versturen.
+- **Genereer voorstel.** Kies **Volledig voorstel** (vervangt de sessies in het
+  bereik) of **Alleen aanvullen** (laat sessies met een begeleider staan, vult de
+  rest), eventueel per blok. Het greedy-algoritme bundelt de groepen en zet ze bij
+  de begeleider met de meeste resterende weekend-capaciteit die het vak en de
+  jaarlaag kan en die dag/dagdeel beschikbaar is; vakvoorkeuren wegen mee. Alles
+  is daarna met de hand bij te schaven. Een voorstel over een `definitief` rooster
+  vraagt een extra bevestiging en zet de status terug op `concept`.
+- **Knelpunten.** Gegroepeerd op ernst (Los eerst op / Aandacht / Klein), met een
+  pijl-knop die naar de plek springt om het op te lossen.
+- **Weekrooster.** Kies een blok; de kolommen zijn de weekenddatums, met een
+  ochtend- en middagvak per dag. Elke sessie is een blokje met vak, jaarlaag,
+  school, begeleider en de bezetting. Klik een blokje voor datum, locatie,
+  begeleider en de leerlingen. Een sessie zonder datum staat in de balk **Nog te
+  plannen**; tik 'm aan en klik daarna een geldig vak in het rooster.
+- **Buiten beschikbaarheid.** Een begeleider koppelen op een datum waarop die zich
+  niet beschikbaar meldde kan, maar alleen na een extra waarschuwing.
 
 ### Begeleiders
 Docenten, trainers en ondersteuners. Per begeleider: naam, e-mail, welke vakken
-en jaarlagen die kan bedienen, de beschikbaarheid (datum + ochtend/middag/avond)
-en het maximum aantal sessies per weekend. Begeleiders kunnen hun beschikbaarheid
-ook zelf bijwerken via hun eigen inlog (rol Begeleider).
+en jaarlagen die kan bedienen, de **vakvoorkeuren** (wat die het liefst geeft) en
+het maximum aantal sessies per weekend. De **beschikbaarheid** is hier alleen-
+lezen: normaal vult de begeleider die zelf in via de eigen inlog. Aanpassen kan
+na "Wijzig beschikbaarheid" en een extra bevestiging.
 
 ### Scholen en vakken
 De beheerbare lijsten: scholen, vakken, jaarlagen, blokken en de minimale/

@@ -258,6 +258,40 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .suggesties li .sg-sub{font-size:12px;color:var(--mute)}
 .suggesties li:hover,.suggesties li[aria-selected="true"]{background:var(--coral-light);color:var(--coral-dark)}
 
+/* ===== Planning: week-rooster met sessieblokken ==================== */
+.pr-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.pr-cell{min-height:60px;border:1.5px dashed var(--line);border-radius:var(--r-m);padding:6px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px;transition:border-color .12s,background .12s}
+.pr-cell.kan-hier{border-color:var(--coral);background:var(--coral-light);cursor:pointer}
+.pr-cell>.pr-dd{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mute-2)}
+.sessiechip{border:1.5px solid var(--line);border-left:3px solid var(--coral);border-radius:10px;padding:7px 9px;background:#fff;cursor:pointer;font-size:12px;line-height:1.35;transition:box-shadow .12s,transform .12s}
+.sessiechip:hover{box-shadow:var(--sh-card);transform:translateY(-1px)}
+.sessiechip .sc-t{font-weight:800;color:var(--ink);display:block}
+.sessiechip .sc-s{color:var(--mute);font-size:11px;display:block}
+.sessiechip.is-leeg{border-left-color:var(--bad)}
+.sessiechip.is-krap,.sessiechip.is-vol{border-left-color:var(--warn)}
+.sessiechip.buiten-besch{outline:2px dotted var(--warn);outline-offset:1px}
+.capbar{height:5px;border-radius:3px;background:var(--divider);overflow:hidden;margin-top:5px}
+.capbar>i{display:block;height:100%;background:var(--coral)}
+.capbar.vol>i{background:var(--warn)}
+.plan-tray{display:flex;gap:8px;flex-wrap:wrap;padding:10px;background:var(--divider);border-radius:var(--r-m);margin-bottom:14px}
+.plan-tray .tray-chip{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.plan-tray .tray-chip.aan{background:var(--coral-light);border-color:var(--coral);color:var(--coral-dark)}
+.knelpunt-groep{margin-bottom:12px}
+.knelpunt-groep .kg-item{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid rgba(15,23,42,.06)}
+.knelpunt-groep .kg-item:first-child{border-top:0}
+.knelpunt-groep .kg-item .kg-txt{flex:1;min-width:0}
+.knelpunt-groep .kg-item .kg-tt{font-weight:700;color:var(--ink);font-size:13px}
+.knelpunt-groep .kg-item .kg-sub{font-size:11.5px;color:var(--mute)}
+.knelpunt-groep .kg-item .kg-act{margin-left:auto;flex-shrink:0}
+.aandacht-strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rijbadge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;letter-spacing:.02em;padding:2px 7px;border-radius:999px;text-transform:uppercase}
+.rijbadge.warn{background:var(--warn-bg);color:var(--warn)}
+.rijbadge.bad{background:var(--bad-bg);color:var(--bad)}
+.rijbadge.info{background:var(--divider);color:var(--ink-2)}
+.groep-kop{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--ink);padding:10px 4px 6px;cursor:pointer}
+.groep-kop .gk-chev{color:var(--chev);transition:transform .15s}
+.groep-kop.dicht .gk-chev{transform:rotate(-90deg)}
+
 /* ===== Subtiele entree-stagger voor kaarten ========================= */
 .stack>.card:nth-child(2){animation-delay:.04s}
 .stack>.card:nth-child(3){animation-delay:.08s}

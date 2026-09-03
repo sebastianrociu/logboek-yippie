@@ -4,11 +4,12 @@ Plannings- en inschrijfsysteem voor **Yippie voor de klas**: van inschrijving to
 roostering, communicatie en (later) aanwezigheid. Deze map is een losstaand
 Cloudflare-Pages-project; het oude logboek staat ongewijzigd in `../logboek/`.
 
-**Status: Fase 1 (MVP).** Inschrijfformulier, beheer van scholen/vakken/jaarlagen/
-begeleiders, beschikbaarheid, handmatig sessies maken met groepeer-hint en
+**Status: Fase 1 (MVP) + roostervoorstel.** Inschrijfformulier (vrije school met
+suggesties, niveau/leerjaar, traject), beheer van scholen/vakken/jaarlagen/
+begeleiders, beschikbaarheid, een weekrooster met greedy roostervoorstel en
 knelpuntsignalering, persoonlijke indelingspagina en een alleen-lezen
-schooloverzicht. Roostervoorstel-automatiek, e-mail en aanwezigheid volgen in
-fase 2 en 3 (zie `docs/VRAGEN.md`).
+schooloverzicht. E-mail (Gmail-OAuth), WebPush en aanwezigheid volgen in fase 2
+en 3 (zie `docs/VRAGEN.md`).
 
 ## Stack (vastgelegd in de opdracht)
 

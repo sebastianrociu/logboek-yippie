@@ -9,7 +9,7 @@
    inschrijvingen (append) zodat gelijktijdige schrijfacties niet verdwijnen.
    ========================================================================== */
 
-const VERSION = '2026-09-04.2';
+const VERSION = '2026-09-04.4';
 
 const KEYS = {
   config: 'config',
@@ -368,6 +368,254 @@ async function vindOfMaakJaarlaag(env, config, niveau, leerjaar) {
   }
 }
 
+/* ---------- roosterlogica (gedeeld: /analyse + /genereer) ---------------- */
+// Enumereert de za/zo-datums tussen van..tot (ISO 'YYYY-MM-DD').
+function weekendDatums(van, tot, dagen) {
+  const out = [];
+  if (!van || !tot) return out;
+  let t = Date.parse(van + 'T00:00:00Z');
+  const end = Date.parse(tot + 'T00:00:00Z');
+  if (isNaN(t) || isNaN(end) || end < t) return out;
+  const WD = { 0: 'zo', 6: 'za' };
+  for (let guard = 0; t <= end && guard < 400; t += 86400000, guard++) {
+    const tag = WD[new Date(t).getUTCDay()];
+    if (tag && (!dagen || dagen.includes(tag))) out.push({ datum: new Date(t).toISOString().slice(0, 10), dag: tag });
+  }
+  return out;
+}
+// Sleutel per kalenderweekend: de zaterdag ervoor (zo -> vorige za).
+function weekendSleutel(datum) {
+  const t = Date.parse(datum + 'T00:00:00Z');
+  if (isNaN(t)) return datum || '?';
+  const shift = new Date(t).getUTCDay() === 0 ? 1 : 0;
+  return new Date(t - shift * 86400000).toISOString().slice(0, 10);
+}
+function vakNaamById(config, id) {
+  const v = (config.vakken || []).find((x) => x.id === id);
+  return v ? v.naam : id;
+}
+function resourceVakKeys(r, config) {
+  return new Set((r.vakIds || []).map((id) => vakKey(vakNaamById(config, id))));
+}
+function gekwalificeerd(r, g, config) {
+  return resourceVakKeys(r, config).has(g.vakKey) && (r.jaarlaagIds || []).includes(g.jaarlaagId);
+}
+function beschikbaarOp(r, datum, dagdeel) {
+  return (r.beschikbaarheid || []).some((s) => s.datum === datum && s.dagdeel === dagdeel);
+}
+function knelpunt(type, severity, titel, detail, ref) {
+  return { id: hashStr(type + '|' + ((ref && (ref.id || ref.vak || ref.schoolVrij)) || titel)), type, severity, titel, detail: detail || '', ref: ref || null };
+}
+function dedupeKnelpunten(list) {
+  const seen = new Set(); const out = [];
+  for (const k of list) { if (!seen.has(k.id)) { seen.add(k.id); out.push(k); } }
+  const rang = { hoog: 0, midden: 1, laag: 2 };
+  return out.sort((a, b) => (rang[a.severity] ?? 3) - (rang[b.severity] ?? 3));
+}
+
+// Bundel inschrijvingen tot sessiegroepen op school|jaarlaag|blok|dag|dagdeel|vak|traject?
+function bouwGroepen(inschrijvingen, config) {
+  const split = config.instellingen.splitOpTraject !== false;
+  const G = new Map();
+  for (const r of (inschrijvingen.items || [])) {
+    if (r.status === 'geannuleerd' || r.status === 'afgerond') continue;
+    for (const k of (r.keuzes || [])) {
+      for (const vak of (k.vakken || [])) {
+        const vk = vakKey(vak);
+        const tr = split ? (r.traject || '') : '';
+        const schoolKey = r.schoolId || ('vrij:' + (r.schoolVrij || ''));
+        const key = [schoolKey, r.jaarlaagId, k.blokId, k.dag, k.dagdeel, vk, tr].join('|');
+        let g = G.get(key);
+        if (!g) {
+          g = {
+            key, schoolId: r.schoolId || '', schoolVrij: r.schoolVrij || '',
+            jaarlaagId: r.jaarlaagId || '', blokId: k.blokId, dag: k.dag, dagdeel: k.dagdeel,
+            vak: vakNaam(vak), vakKey: vk, traject: tr, leerlingIds: [],
+          };
+          G.set(key, g);
+        }
+        if (!g.leerlingIds.includes(r.id)) g.leerlingIds.push(r.id);
+      }
+    }
+  }
+  return [...G.values()];
+}
+
+// Cross-cutting signalen die niet uit één groep volgen.
+function extraKnelpunten(state, sessies, config) {
+  const out = [];
+  const ins = state.inschrijvingen.items || [];
+  if (sessies.length) {
+    for (const r of ins) {
+      if (r.status === 'geannuleerd' || r.status === 'afgerond') continue;
+      if (!(r.keuzes || []).some((k) => (k.vakken || []).length)) continue;
+      if (!sessies.some((s) => (s.leerlingIds || []).includes(r.id))) {
+        out.push(knelpunt('niet-ingedeeld', 'hoog', r.leerling.naam + ' zit in geen enkele sessie', '', { kind: 'inschrijving', id: r.id }));
+      }
+    }
+  }
+  const perResWeekend = new Map();
+  for (const s of sessies) {
+    if (!s.resourceId || !s.datum) continue;
+    const k = s.resourceId + '|' + weekendSleutel(s.datum);
+    perResWeekend.set(k, (perResWeekend.get(k) || 0) + 1);
+  }
+  for (const r of (state.resources.items || [])) {
+    for (const [k, n] of perResWeekend) {
+      if (k.indexOf(r.id + '|') !== 0) continue;
+      if (r.maxPerWeekend && n > r.maxPerWeekend) {
+        out.push(knelpunt('begeleider-over-max', 'hoog', r.naam + ' is ' + n + ' sessies ingedeeld in het weekend van ' + k.split('|')[1] + ' (max. ' + r.maxPerWeekend + ')', '', { kind: 'begeleider', id: r.id }));
+      }
+    }
+  }
+  for (const r of ins) {
+    if (r.status === 'geannuleerd') continue;
+    if (!r.jaarlaagId && (r.niveau || r.leerjaar)) {
+      out.push(knelpunt('jaarlaag-los', 'laag', r.leerling.naam + ': ' + (r.leerjaar || '?') + ' ' + (r.niveau || '') + ' nog niet aan een jaarlaag gekoppeld', '', { kind: 'inschrijving', id: r.id }));
+    }
+  }
+  const vrij = new Map();
+  for (const r of ins) {
+    if (r.status === 'geannuleerd') continue;
+    if (!r.schoolId && r.schoolVrij) vrij.set(r.schoolVrij, (vrij.get(r.schoolVrij) || 0) + 1);
+  }
+  for (const [naam, n] of vrij) out.push(knelpunt('nieuwe-school', 'laag', 'Nieuwe school "' + naam + '" nog koppelen', n + ' inschrijving(en)', { kind: 'inschrijving', id: '', schoolVrij: naam }));
+  const bekend = new Set((config.vakken || []).map((v) => vakKey(v.naam)));
+  const onbekend = new Map();
+  for (const r of ins) {
+    if (r.status === 'geannuleerd') continue;
+    for (const k of (r.keuzes || [])) for (const v of (k.vakken || [])) {
+      if (!bekend.has(vakKey(v))) onbekend.set(vakNaam(v), (onbekend.get(vakNaam(v)) || 0) + 1);
+    }
+  }
+  for (const [naam, n] of onbekend) out.push(knelpunt('vak-onbekend', 'laag', 'Vak "' + naam + '" staat niet in de vakkenlijst', n + 'x gekozen', { kind: 'vak', id: '', vak: naam }));
+  return out;
+}
+
+// Alleen-lezen: knelpunten van het HUIDIGE rooster + groep-info voor de client.
+function analyseKnelpunten(state) {
+  const { config } = state;
+  const sessies = state.rooster.sessies || [];
+  const jaarLabel = (id) => { const j = (config.jaarlagen || []).find((x) => x.id === id); return j ? j.label : (id || '?'); };
+  const kn = [];
+  const groepInfo = bouwGroepen(state.inschrijvingen, config).map((g) => {
+    const pool = (state.resources.items || []).filter((r) => gekwalificeerd(r, g, config));
+    const beschik = pool.filter((r) => (r.beschikbaarheid || []).some((s) => s.dagdeel === g.dagdeel));
+    const made = sessies.filter((s) => vakKey(s.vak) === g.vakKey && s.jaarlaagId === g.jaarlaagId
+      && (s.schoolId || '') === (g.schoolId || '') && s.blokId === g.blokId && s.dag === g.dag && s.dagdeel === g.dagdeel);
+    if (!g.jaarlaagId) { /* jaarlaag-los, komt uit extraKnelpunten */ }
+    else if (!pool.length) kn.push(knelpunt('geen-gekwalificeerde', 'hoog', 'Geen begeleider kan ' + g.vak + ' voor ' + jaarLabel(g.jaarlaagId), g.leerlingIds.length + ' leerling(en)', { kind: 'begeleider', id: '', vak: g.vak, jaarlaagId: g.jaarlaagId }));
+    else if (!beschik.length) kn.push(knelpunt('geen-beschikbaarheid', 'midden', 'Begeleider(s) voor ' + g.vak + ' hebben geen ' + g.dagdeel + '-beschikbaarheid', '', { kind: 'groep', id: g.key }));
+    if (g.jaarlaagId && g.leerlingIds.length < config.instellingen.groepMin) {
+      kn.push(knelpunt('onder-min', 'midden', 'Kleine groep: ' + g.vak + ' / ' + jaarLabel(g.jaarlaagId), g.leerlingIds.length + ', minimum is ' + config.instellingen.groepMin, made[0] ? { kind: 'sessie', id: made[0].id } : { kind: 'groep', id: g.key }));
+    }
+    return {
+      key: g.key, schoolId: g.schoolId, schoolVrij: g.schoolVrij, jaarlaagId: g.jaarlaagId,
+      blokId: g.blokId, dag: g.dag, dagdeel: g.dagdeel, vak: g.vak, traject: g.traject,
+      aantal: g.leerlingIds.length, schaarste: pool.length, poolIds: pool.map((r) => r.id), sessieIds: made.map((s) => s.id),
+    };
+  });
+  for (const s of sessies) {
+    if (!s.datum) kn.push(knelpunt('sessie-zonder-datum', 'midden', 'Sessie zonder datum: ' + s.vak + ' / ' + jaarLabel(s.jaarlaagId), '', { kind: 'sessie', id: s.id }));
+    if (!s.resourceId) kn.push(knelpunt('sessie-zonder-begeleider', 'midden', 'Sessie zonder begeleider: ' + s.vak + ' / ' + jaarLabel(s.jaarlaagId), '', { kind: 'sessie', id: s.id }));
+  }
+  for (const b of (config.blokken || [])) if (!b.van || !b.tot) kn.push(knelpunt('blok-zonder-datums', 'midden', 'Blok "' + b.label + '" heeft geen begin- en einddatum', '', { kind: 'blok', id: b.id }));
+  kn.push(...extraKnelpunten(state, sessies, config));
+  return { groepen: groepInfo, knelpunten: dedupeKnelpunten(kn) };
+}
+
+// Greedy one-pass: bundel -> splits -> sorteer op schaarste -> wijs toe.
+function genereerVoorstel(state, opts) {
+  const t0 = Date.now();
+  const { config, resources, inschrijvingen } = state;
+  const huidige = state.rooster.sessies || [];
+  const min = config.instellingen.groepMin, max = config.instellingen.groepMax;
+  const blokById = new Map((config.blokken || []).map((b) => [b.id, b]));
+  const jaarLabel = (id) => { const j = (config.jaarlagen || []).find((x) => x.id === id); return j ? j.label : (id || '?'); };
+  const modus = opts.modus === 'aanvullen' ? 'aanvullen' : 'volledig';
+  const scopeBlok = opts.blokId || null;
+
+  let groepen = bouwGroepen(inschrijvingen, config);
+  if (scopeBlok) groepen = groepen.filter((g) => g.blokId === scopeBlok);
+  const eenheden = [];
+  for (const g of groepen) {
+    const blok = blokById.get(g.blokId);
+    const datums = blok ? weekendDatums(blok.van, blok.tot, [g.dag]).map((x) => x.datum) : [];
+    const ll = g.leerlingIds.slice();
+    if (!ll.length) continue;
+    for (let i = 0; i < ll.length; i += max) eenheden.push(Object.assign({}, g, { leerlingIds: ll.slice(i, i + max), datums }));
+  }
+  for (const e of eenheden) {
+    e.pool = (resources.items || []).filter((r) => gekwalificeerd(r, e, config) && e.datums.some((dt) => beschikbaarOp(r, dt, e.dagdeel)));
+    e.schaarste = e.pool.length;
+  }
+  eenheden.sort((a, b) => a.schaarste - b.schaarste || b.leerlingIds.length - a.leerlingIds.length);
+
+  const gebruikt = new Map(); // resId|weekendSleutel -> aantal
+  const behouden = [];
+  if (modus === 'aanvullen') {
+    for (const s of huidige) {
+      if (scopeBlok && s.blokId !== scopeBlok) { behouden.push(s); continue; }
+      behouden.push(s);
+      if (s.resourceId && s.datum) {
+        const gk = s.resourceId + '|' + weekendSleutel(s.datum);
+        gebruikt.set(gk, (gebruikt.get(gk) || 0) + 1);
+      }
+    }
+  }
+
+  const nieuw = [];
+  const kn = [];
+  for (const e of eenheden) {
+    if (modus === 'aanvullen') {
+      const alBezet = behouden.some((s) => vakKey(s.vak) === e.vakKey && s.jaarlaagId === e.jaarlaagId
+        && (s.schoolId || '') === (e.schoolId || '') && s.blokId === e.blokId && s.dag === e.dag && s.dagdeel === e.dagdeel);
+      if (alBezet) continue;
+    }
+    let gekozen = null, datum = e.datums[0] || '';
+    for (const dt of e.datums) {
+      const wk = weekendSleutel(dt);
+      const ruimte = (r) => Math.max(0, r.maxPerWeekend || 0) - (gebruikt.get(r.id + '|' + wk) || 0);
+      const kand = e.pool.filter((r) => beschikbaarOp(r, dt, e.dagdeel) && ruimte(r) > 0);
+      if (!kand.length) continue;
+      const pref = (r) => (r.vakVoorkeuren || []).some((id) => vakKey(vakNaamById(config, id)) === e.vakKey) ? 1 : 0;
+      kand.sort((a, b) => ruimte(b) - ruimte(a) || pref(b) - pref(a) || (a.id < b.id ? -1 : 1));
+      gekozen = kand[0]; datum = dt;
+      const gk = gekozen.id + '|' + wk;
+      gebruikt.set(gk, (gebruikt.get(gk) || 0) + 1);
+      break;
+    }
+    const sessie = {
+      id: 's_' + uid(7),
+      vak: e.vak, jaarlaagId: e.jaarlaagId, schoolId: e.schoolId,
+      blokId: e.blokId, dag: e.dag, dagdeel: e.dagdeel, traject: e.traject,
+      datum, locatie: '',
+      resourceId: gekozen ? gekozen.id : '', begeleiderNaam: gekozen ? gekozen.naam : '',
+      leerlingIds: e.leerlingIds.slice(), min, max,
+      bron: 'voorstel', buitenBeschikbaarheid: false,
+    };
+    nieuw.push(sessie);
+    if (!gekozen) {
+      const anyQual = (resources.items || []).some((r) => gekwalificeerd(r, e, config));
+      kn.push(anyQual
+        ? knelpunt('geen-beschikbaarheid', 'midden', 'Geen beschikbare begeleider voor ' + e.vak + ' / ' + jaarLabel(e.jaarlaagId), e.leerlingIds.length + ' leerling(en)', { kind: 'sessie', id: sessie.id })
+        : knelpunt('geen-gekwalificeerde', 'hoog', 'Geen begeleider kan ' + e.vak + ' voor ' + jaarLabel(e.jaarlaagId), e.leerlingIds.length + ' leerling(en)', { kind: 'begeleider', id: '', vak: e.vak, jaarlaagId: e.jaarlaagId }));
+    }
+    if (e.leerlingIds.length < min) kn.push(knelpunt('onder-min', 'midden', 'Kleine groep: ' + e.vak + ' / ' + jaarLabel(e.jaarlaagId), e.leerlingIds.length + ', minimum is ' + min, { kind: 'sessie', id: sessie.id }));
+    if (!e.datums.length) {
+      const bl = blokById.get(e.blokId);
+      kn.push(knelpunt('blok-zonder-datums', 'midden', 'Blok "' + (bl ? bl.label : e.blokId) + '" heeft geen begin- en einddatum', '', { kind: 'blok', id: e.blokId }));
+    }
+  }
+  const basis = modus === 'aanvullen' ? behouden : (scopeBlok ? huidige.filter((s) => s.blokId !== scopeBlok) : []);
+  const sessies = basis.concat(nieuw);
+  kn.push(...extraKnelpunten(state, sessies, config));
+  return {
+    sessies, knelpunten: dedupeKnelpunten(kn),
+    stats: { groepen: groepen.length, nieuweSessies: nieuw.length, toegewezen: nieuw.filter((s) => s.resourceId).length, duurMs: Date.now() - t0 },
+  };
+}
+
 /* ---------- routes ---------------------------------------------------------- */
 async function handleApi(request, env) {
   const url = new URL(request.url);
@@ -513,7 +761,42 @@ async function handleApi(request, env) {
     }
     if (sub === 'rooster') {
       if (method === 'GET') return json(await readJSON(env, KEYS.rooster));
-      if (method === 'PUT') return json(await putSection(env, KEYS.rooster, body, ['sessies']));
+      // Volledige vervanging met _rev-check (geen merge-op-id): zo blijft een
+      // verwijderde sessie ook echt weg. Bij gelijktijdig schrijven -> 409, retry.
+      if (method === 'PUT') return json(await putSection(env, KEYS.rooster, body, []));
+    }
+    if (sub === 'rooster/analyse' && method === 'GET') {
+      const [config, resources, inschrijvingen, rooster] = await Promise.all([
+        readJSON(env, KEYS.config), readJSON(env, KEYS.resources),
+        readJSON(env, KEYS.inschrijvingen), readJSON(env, KEYS.rooster),
+      ]);
+      return json(analyseKnelpunten({ config, resources, inschrijvingen, rooster }));
+    }
+    if (sub === 'rooster/genereer' && method === 'POST') {
+      const [config, resources, inschrijvingen, rooster] = await Promise.all([
+        readJSON(env, KEYS.config), readJSON(env, KEYS.resources),
+        readJSON(env, KEYS.inschrijvingen), readJSON(env, KEYS.rooster),
+      ]);
+      const state = { config, resources, inschrijvingen, rooster };
+      const out = genereerVoorstel(state, { blokId: str(body.blokId, 40) || null, modus: body.modus });
+      if (rooster.status === 'definitief' && body.bevestigDefinitief !== true) {
+        return json({ needConfirm: true, toegepast: false, roosterStatusVoor: 'definitief', sessies: out.sessies, knelpunten: out.knelpunten, stats: out.stats });
+      }
+      const na = await mutate(env, KEYS.rooster, (d) => {
+        d.sessies = out.sessies;
+        d.conflicten = out.knelpunten;
+        if (d.status === 'definitief') d.status = 'concept';
+        return d;
+      });
+      // status laten meelopen: wie in een sessie zit -> 'ingepland' (alleen vanuit 'nieuw').
+      const ingedeeld = new Set();
+      for (const s of na.sessies) for (const id of (s.leerlingIds || [])) ingedeeld.add(id);
+      await mutate(env, KEYS.inschrijvingen, (d) => {
+        let veranderd = false;
+        for (const r of d.items) if (r.status === 'nieuw' && ingedeeld.has(r.id)) { r.status = 'ingepland'; veranderd = true; }
+        return veranderd ? d : null;
+      });
+      return json({ toegepast: true, roosterStatusVoor: rooster.status, status: na.status, sessies: na.sessies, knelpunten: out.knelpunten, stats: out.stats });
     }
     if (sub === 'rooster/definitief' && method === 'POST') {
       const out = await mutate(env, KEYS.rooster, (d) => { d.status = 'definitief'; return d; });
