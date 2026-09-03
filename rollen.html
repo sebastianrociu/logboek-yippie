@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Logboek per rol bekijken</title>
+<meta name="theme-color" content="#E8735A">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:0}
+  :root{--coral:#E8735A;--coral-dark:#C95A43;--ink:#1A1A1A;--ink-2:#4B5563;--mute:#8A94A6;--line:#E6E9EF;--bg:#F2F2F7}
+  body{background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;line-height:1.55}
+  .wrap{max-width:640px;margin:0 auto;padding:44px 20px 72px}
+  h1{font-size:24px;font-weight:900;letter-spacing:-.02em}
+  .lead{color:var(--ink-2);font-size:14.5px;margin-top:8px;max-width:52ch}
+  .grid{display:flex;flex-direction:column;gap:14px;margin-top:26px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px 20px 18px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04),0 4px 12px rgba(15,23,42,.05)}
+  .card h2{font-size:16px;font-weight:800}
+  .card .who{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--coral-dark);margin-bottom:3px}
+  .card p{font-size:13px;color:var(--ink-2);margin-top:6px}
+  .card ul{margin:10px 0 0;padding-left:18px}
+  .card li{font-size:12.5px;color:var(--ink-2);margin:3px 0}
+  .card .open{margin-top:14px;display:inline-flex;align-items:center;gap:7px;border:none;border-radius:11px;
+    background:var(--coral);color:#fff;font-weight:800;font-size:13.5px;padding:10px 16px;cursor:pointer;font-family:inherit;
+    box-shadow:0 2px 8px rgba(232,115,90,.28)}
+  .card .open:hover{background:var(--coral-dark)}
+  .opt{margin-top:22px;font-size:12.5px;color:var(--mute);display:flex;align-items:center;gap:8px}
+  .opt input{width:16px;height:16px;accent-color:var(--coral)}
+  .foot{margin-top:24px;font-size:12px;color:var(--mute);line-height:1.6}
+  .foot a{color:var(--coral-dark)}
+  :focus-visible{outline:2px solid var(--coral);outline-offset:2px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Logboek per rol bekijken</h1>
+  <p class="lead">Kies een rol om te zien hoe die het logboek ziet. Je kunt daarna
+     via “Rollen” rechtsboven terug naar deze pagina.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="who">Yippie</div>
+      <h2>De Yippie die het uur draait</h2>
+      <p>Houdt per leerling bij wat die heeft gedaan.</p>
+      <ul>
+        <li>Volledige toegang: notities toevoegen, wijzigen, verwijderen.</li>
+        <li>Beheer (scholen, klassen, lesuren) achter de pincode <b>0000</b>.</li>
+      </ul>
+      <button class="open" data-rol="yippie" data-naam="Sanne Bakker">Bekijk als Yippie</button>
+    </div>
+
+    <div class="card">
+      <div class="who">Beheerder</div>
+      <h2>Beheert de instellingen</h2>
+      <p>Zet scholen, klassen, mentoren en lesuren goed voor de andere Yippies.</p>
+      <ul>
+        <li>Alles wat de Yippie kan.</li>
+        <li>Opent Beheer <b>zonder pincode</b>.</li>
+      </ul>
+      <button class="open" data-rol="beheer" data-naam="Team Yippie">Bekijk als beheerder</button>
+    </div>
+
+    <div class="card">
+      <div class="who">School / mentor</div>
+      <h2>Mentor van klas TV17</h2>
+      <p>Kan meelezen hoe het met de eigen leerlingen gaat.</p>
+      <ul>
+        <li>Ziet <b>alleen klas TV17</b>.</li>
+        <li><b>Alleen-lezen</b>: geen notities toevoegen of wijzigen, geen Beheer.</li>
+      </ul>
+      <button class="open" data-rol="mentor" data-naam="M. de Wit" data-klas="TV17">Bekijk als mentor</button>
+    </div>
+  </div>
+
+  <label class="opt">
+    <input type="checkbox" id="seed" checked>
+    Voorbeeldgegevens laden als het logboek nog leeg is
+  </label>
+
+  <p class="foot">Dit is een voorbeeldweergave, geen echte inlog. De rol staat in
+     <code>localStorage</code> en je zet 'm zo weer om.
+     <a href="#" id="clear">Rol wissen en normaal openen</a></p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "logboek_yippie_v1";
+
+  function demoData() {
+    var mkE = function (datum, lesVan, lesTot, notitie) {
+      return { datum: datum, lesVan: lesVan, lesTot: lesTot, lesuren: lesVan + " t/m " + lesTot + " uur",
+               van: "", tot: "", notitie: notitie };
+    };
+    return {
+      organisatie: "Wiskundeschool",
+      school: "Helen Parkhurst",
+      schooljaar: "2026-2027",
+      lessen: [{ naam: "Wiskundeschool", school: "Helen Parkhurst" }],
+      scholen: {
+        "Helen Parkhurst": {
+          klassen: { "TV17": { mentor: "M. de Wit" }, "TA3B": { mentor: "Jansen" } },
+          leerlingen: [
+            { naam: "Sanne de Vries", klas: "TV17", entries: [
+              mkE("2026-09-01", "3e", "4e", "Kwadratische vergelijkingen geoefend. Ontbinden gaat goed, abc-formule nog onzeker."),
+              mkE("2026-09-03", "3e", "4e", "abc-formule herhaald met stappenplan. Zelfstandig 4 sommen goed gemaakt.")
+            ] },
+            { naam: "Youssef El Amrani", klas: "TV17", entries: [
+              mkE("2026-09-03", "3e", "4e", "Toets voorbereid: rekenen met machten. Volgende keer breuken met machten.")
+            ] },
+            { naam: "Mila Jansen", klas: "TV17", entries: [
+              mkE("2026-09-02", "5e", "5e", "Statistiek: gemiddelde en modus. Snapt het verschil nu, oefenen met grotere datasets.")
+            ] },
+            { naam: "Tygo de Groot", klas: "TA3B", entries: [
+              mkE("2026-09-02", "7e", "8e", "Goniometrie. Sinus en cosinus in de eenheidscirkel doorgenomen.")
+            ] }
+          ],
+          prullenbak: []
+        }
+      }
+    };
+  }
+
+  function heeftLeerlingen() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (!s || !s.scholen) return false;
+      return Object.keys(s.scholen).some(function (k) { return (s.scholen[k].leerlingen || []).length; });
+    } catch (e) { return false; }
+  }
+
+  function open(rol, naam, klas) {
+    try {
+      if (document.getElementById("seed").checked && !heeftLeerlingen()) {
+        localStorage.setItem(KEY, JSON.stringify(demoData()));
+      }
+      var sessie = { rol: rol, naam: naam };
+      if (klas) sessie.klas = klas;
+      localStorage.setItem("yippie_portaal_sessie", JSON.stringify(sessie));
+      localStorage.removeItem("logboek_yippie_intro"); // uitleg opnieuw tonen
+    } catch (e) {}
+    location.href = "index.html";
+  }
+
+  document.querySelectorAll(".open").forEach(function (b) {
+    b.addEventListener("click", function () {
+      open(b.getAttribute("data-rol"), b.getAttribute("data-naam"), b.getAttribute("data-klas"));
+    });
+  });
+
+  document.getElementById("clear").addEventListener("click", function (e) {
+    e.preventDefault();
+    try { localStorage.removeItem("yippie_portaal_sessie"); } catch (e2) {}
+    location.href = "index.html";
+  });
+})();
+</script>
+</body>
+</html>

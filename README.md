@@ -1,14 +1,14 @@
 # Logboek Yippie
 
-Logboek voor een inschrijfuur zoals **Wiskundeschool**: leerlingen schrijven
-zich in (of worden ingeschreven door mentoren/docenten) en werken aan hun vak.
-Per leerling houd je bij wat die wanneer heeft gedaan, zodat de school en de
-mentoren het kunnen terugzien.
+Logboek voor een inschrijfuur zoals **Wiskundeschool**: leerlingen werken aan
+hun vak. Je noteert per leerling kort wat die heeft gedaan, zodat de school en
+de mentoren kunnen meelezen. Aanwezigheid gaat via Somtoday; dit is puur voor
+de notities.
 
-Openen kan op https://sebastianrociu.github.io/logboek-yippie/ - dat is het
-Yippie-inlogscherm. Na inloggen zie je het dashboard; het logboek verschijnt
-zodra je op Wiskundeschool bent ingepland. Mentoren en de school openen het
-logboek alleen-lezen.
+- **`index.html`** - het logboek. Openen kan op
+  https://sebastianrociu.github.io/logboek-yippie/
+- **`rollen.html`** - voorbeeldweergave: bekijk het logboek als Yippie,
+  als beheerder, of als mentor van een klas (alleen-lezen).
 
-Les, school, klassen en lesuren pas je in de app aan (Beheer, met pincode).
-De demo-gegevens blijven in je eigen browser.
+Alles draait client-side; de gegevens blijven in je eigen browser. School,
+klassen, mentoren en lesuren pas je aan in Beheer (tandwiel, pincode `0000`).
