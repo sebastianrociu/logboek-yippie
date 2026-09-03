@@ -13,15 +13,24 @@ structureels verandert.
 
 | Onderdeel | Status | Bestand(en) |
 |---|---|---|
-| **Logboek** (huiswerkklas-sessies loggen) | Werkt, live | `index.html` |
+| **Logboek** (huiswerkklas-sessies loggen) | Werkt | `logboek.html` |
+| **Portaal** (login -> dashboard -> gated logboek) | v1 werkt | `index.html`, `dashboard.html`, `portaal-data.js` |
+| **Toegangspoort** (logboek vanaf 1e planning op Wiskundeschool) | Werkt | in `index.html` (vlag) + `logboek.html` (check) |
+| **Rol mentor/school = alleen-lezen logboek** | Werkt | `logboek.html` (`READONLY`) |
 | **Beveiliging & AVG-doorlichting** | Opgeleverd | artifact, zie §7 |
 | Gescrapete kopie van het echte portaal | Referentie | `portaal.yippievoordeklas.nl/` (HTTrack, niet deployen) |
-| **Portaal namaken + logboek erin + toegangspoort** | Te bouwen | `portaal/` (zie §4) |
 | **Mentor-mail** (wekelijkse update naar klasmentor) | Te bouwen | zie §5 |
+| Dashboard verfijnen (meer secties uit origineel) | Kan later | `dashboard.html` |
 
-**Live nu:** `https://sebastianrociu.github.io/logboek-yippie/` - alleen het
-losse logboek. Straks wordt de repo-root het portaal en verhuist het logboek
-naar een submap achter login (§4).
+**Live:** `https://sebastianrociu.github.io/logboek-yippie/` - de repo-root is nu
+het **portaal-inlogscherm**. Na inloggen kom je op `dashboard.html`; het logboek
+(`logboek.html`) is alleen bereikbaar met een sessie én toegang (§4).
+Op `localhost`/`file:` slaat `logboek.html` de poort over zodat losstaand
+ontwikkelen kan (`DEV`-vlag).
+
+**Rollen:** `sessie.rol` = `yippie` (vol) of `mentor`/`school` (alleen-lezen:
+geen compose, geen Beheer, geen verwijderen; gele "alleen-lezen"-balk).
+De school/mentoren kunnen de notities dus wél inzien, niet wijzigen.
 
 ---
 
@@ -178,6 +187,11 @@ kiezen bij de bouw; laten staan is dichter bij "vanaf het eerste moment").
 
 > Als beheerder een mailtje kunnen sturen naar de mentor(en) van een klas,
 > bijv. wekelijks één update met hoe het gaat.
+
+**Gewenst eindbeeld:** **elke week automatisch** een mail per klas naar de
+mentor(en), maar alleen als er die week leerlingen bij de les zijn geweest en er
+notities zijn toegevoegd. Automatisch versturen kan niet client-side (geen
+server, geen cron) - dat hoort bij de portaal-backend.
 
 **Nu haalbaar (client-side):** in Beheer of op de klas een knop **"Mail de mentor"**.
 Die stelt een `mailto:`-link samen met:
