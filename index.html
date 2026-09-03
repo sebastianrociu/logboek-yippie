@@ -69,12 +69,11 @@
   .hdr-profile:hover,.hdr-profile:active{background:rgba(255,255,255,.38)}
   .hdr-profile svg{width:19px;height:19px;display:block}
 
-  /* ═══ Context bar - les + school als dropdowns; klassen/lesuren/jaar in Beheer ═══ */
+  /* ═══ Context bar - les-keuze; de school hoort bij de les en staat als tekst ═══ */
   .context{padding:16px 16px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .context .cx-mid{font-size:13.5px;font-weight:600;color:var(--mute-2)}
-  #lesSel,#schoolSel{width:auto;font-weight:700;color:var(--ink)}
-  #lesSel{min-width:150px}
-  #schoolSel{min-width:160px}
+  .context .cx-school{font-size:13.5px;font-weight:700;color:var(--ink)}
+  #lesSel{width:auto;min-width:150px;font-weight:700;color:var(--ink)}
   .save-pill{display:inline-flex;align-items:center;gap:5px;margin-left:auto;background:var(--surface);border:1px solid var(--line);
     border-radius:999px;padding:7px 13px;font-size:11.5px;font-weight:700;color:var(--mute);white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(15,23,42,.04)}
 
@@ -238,9 +237,10 @@
   .trash-item .ti-actions{display:flex;gap:8px;flex-wrap:wrap}
   .pin-in{letter-spacing:.5em;text-align:center;font-size:22px;font-weight:800}
 
-  /* ═══ Toast - bovenaan, los over de header zodat je 'm altijd ziet ═══ */
-  .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%) translateY(-18px);background:#1A1A1A;color:#fff;
-    font-size:13px;font-weight:600;padding:10px 20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);
+  /* ═══ Toast - bovenaan, in de top-layer zodat 'ie ook boven een open dialoog valt ═══ */
+  .toast{inset:auto;position:fixed;left:50%;top:14px;margin:0;border:0;
+    transform:translateX(-50%) translateY(-18px);background:#1A1A1A;color:#fff;
+    font-size:13px;font-weight:600;padding:10px 20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);
     max-width:90vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100003}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .hidden{display:none!important}
@@ -282,7 +282,7 @@
 <div class="context">
   <select id="lesSel" aria-label="Les"></select>
   <span class="cx-mid">op het</span>
-  <select id="schoolSel" aria-label="School"></select>
+  <span class="cx-school" id="cxSchool"></span>
   <span class="save-pill" id="savePill">Opgeslagen</span>
 </div>
 
@@ -328,7 +328,7 @@
 
     <div class="field">
       <label for="bf-school">School</label>
-      <select id="bf-school" name="school"></select>
+      <input class="input" type="text" id="bf-school" readonly tabindex="-1">
       <p class="hint" id="bf-preview"></p>
     </div>
 
@@ -358,27 +358,17 @@
   </form>
 </dialog>
 
-<!-- ===== School dialog (snel toevoegen) ===== -->
-<dialog id="schoolDialog" aria-labelledby="schoolTitle">
-  <form method="dialog" class="dlg">
-    <h3 id="schoolTitle">Nieuwe school</h3>
-    <p class="dsub">Elke school heeft een eigen lijst met leerlingen.</p>
-    <div class="field"><label for="sd-name">Naam van de school</label>
-      <input class="input" type="text" id="sd-name" autocomplete="off" required></div>
-    <div class="dlg-actions rev">
-      <button type="submit" value="ok" class="btn btn-primary">Toevoegen</button>
-      <button type="submit" value="cancel" class="btn btn-ghost">Annuleren</button>
-    </div>
-  </form>
-</dialog>
-
-<!-- ===== Les dialog (snel toevoegen) ===== -->
+<!-- ===== Les dialog (naam + school; school hoort blijvend bij de les) ===== -->
 <dialog id="lesDialog" aria-labelledby="lesTitle">
   <form method="dialog" class="dlg">
     <h3 id="lesTitle">Nieuwe les</h3>
-    <p class="dsub">Bijvoorbeeld Wiskundeschool of Bijles Nederlands. Klassen en leerlingen deel je met de andere lessen op dezelfde school.</p>
+    <p class="dsub">Elke les hoort bij één school. Klassen en leerlingen deel je met andere lessen op diezelfde school.</p>
     <div class="field"><label for="ld-name">Naam van de les</label>
-      <input class="input" type="text" id="ld-name" autocomplete="off" required></div>
+      <input class="input" type="text" id="ld-name" autocomplete="off" required placeholder="bijv. Wiskundeschool"></div>
+    <div class="field"><label for="ld-school">School</label>
+      <select id="ld-school"></select></div>
+    <div class="field hidden" id="ld-newschool-wrap"><label for="ld-newschool">Naam van de nieuwe school</label>
+      <input class="input" type="text" id="ld-newschool" autocomplete="off" placeholder="bijv. Montessori Lyceum"></div>
     <div class="dlg-actions rev">
       <button type="submit" value="ok" class="btn btn-primary">Toevoegen</button>
       <button type="submit" value="cancel" class="btn btn-ghost">Annuleren</button>
@@ -421,7 +411,7 @@
   </form>
 </dialog>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
 
 <script>
 (function () {
@@ -466,9 +456,6 @@
     s = s || {};
     if (!s.organisatie) s.organisatie = "Wiskundeschool";
     delete s.organisaties;
-    if (!Array.isArray(s.lessen) || !s.lessen.length) s.lessen = [s.organisatie];
-    if (s.lessen.indexOf(s.organisatie) === -1) s.lessen.unshift(s.organisatie);
-    s.lessen = s.lessen.filter(function (v, i, a) { return v && a.indexOf(v) === i; });
     if (!s.schooljaar) s.schooljaar = "2026–2027";
 
     if (!s.scholen || typeof s.scholen !== "object") {
@@ -484,6 +471,18 @@
 
     if (!s.school || !s.scholen[s.school]) s.school = Object.keys(s.scholen)[0] || "Helen Parkhurst";
     if (!s.scholen[s.school]) s.scholen[s.school] = { klassen: {}, leerlingen: [], prullenbak: [] };
+
+    // Lessen: elke les hoort bij één school. Oud formaat = ["Wiskundeschool"] (strings).
+    if (!Array.isArray(s.lessen)) s.lessen = [];
+    s.lessen = s.lessen.map(function (v) {
+      if (typeof v === "string") return { naam: v, school: s.school };
+      return { naam: (v && v.naam) || "", school: (v && v.school) || s.school };
+    }).filter(function (v, i, a) {
+      return v.naam && a.findIndex(function (x) { return x.naam === v.naam && x.school === v.school; }) === i;
+    });
+    if (!s.lessen.some(function (l) { return l.naam === s.organisatie && l.school === s.school; })) {
+      s.lessen.unshift({ naam: s.organisatie, school: s.school });
+    }
 
     Object.keys(s.scholen).forEach(function (k) {
       var sc = s.scholen[k];
@@ -586,12 +585,23 @@
   }
   function mentorVoor(klas) { return (klas && cur().klassen[klas] && cur().klassen[klas].mentor) || ""; }
 
-  var toastTimer;
+  var toastTimer, toastHideTimer;
   function toast(msg) {
     var el = document.getElementById("toast");
-    el.textContent = msg; el.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2600);
+    el.textContent = msg;
+    clearTimeout(toastTimer); clearTimeout(toastHideTimer);
+    // Popover-API => toast rendert in de top-layer, dus ook boven een open <dialog>.
+    if (el.showPopover) {
+      try { el.hidePopover(); } catch (e) {}
+      try { el.showPopover(); } catch (e) {}
+    }
+    requestAnimationFrame(function () { el.classList.add("show"); });
+    toastTimer = setTimeout(function () {
+      el.classList.remove("show");
+      toastHideTimer = setTimeout(function () {
+        if (el.hidePopover) { try { el.hidePopover(); } catch (e) {} }
+      }, 240);
+    }, 2600);
   }
 
   function greeting() {
@@ -642,14 +652,11 @@
     document.getElementById("subline").textContent = langeDatum();
 
     var lesSel = document.getElementById("lesSel");
-    lesSel.innerHTML = state.lessen.map(function (n) {
-      return '<option value="' + esc(n) + '"' + (n === state.organisatie ? " selected" : "") + ">" + esc(n) + "</option>";
+    lesSel.innerHTML = state.lessen.map(function (l, i) {
+      var seld = (l.naam === state.organisatie && l.school === state.school) ? " selected" : "";
+      return '<option value="' + i + '"' + seld + ">" + esc(l.naam) + "</option>";
     }).join("") + '<option value="__add">Nieuwe les toevoegen…</option>';
-
-    var sel = document.getElementById("schoolSel");
-    var names = Object.keys(state.scholen).sort(function (a, b) { return a.localeCompare(b, "nl"); });
-    sel.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '"' + (n === state.school ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("")
-      + '<option value="__add">Nieuwe school toevoegen…</option>';
+    document.getElementById("cxSchool").textContent = state.school;
   }
 
   // ---------- Render: left panel ----------
@@ -923,69 +930,57 @@
       return;
     }
   });
-  // ---------- Les switch ----------
+  // ---------- Les kiezen (school hoort bij de les) ----------
   var lesSel = document.getElementById("lesSel");
+  function activeerLes(l) {
+    state.organisatie = l.naam;
+    if (state.school !== l.school) { state.school = l.school; selectedId = null; searchQ = ""; }
+    save(); markSaved(); render();
+  }
   lesSel.addEventListener("change", function () {
     var v = lesSel.value;
     if (v === "__add") {
-      lesSel.value = state.organisatie;
+      renderChrome();
       askPin("Voer de beheerderspincode in om een nieuwe les toe te voegen.").then(function (ok) {
         if (!ok) { toast("Onjuiste pincode"); return; }
         openLesDialog();
       });
       return;
     }
-    state.organisatie = v;
-    save(); markSaved(); render();
+    var l = state.lessen[parseInt(v, 10)];
+    if (l) activeerLes(l);
   });
 
   var lesDialog = document.getElementById("lesDialog");
+  var ldSchool = document.getElementById("ld-school");
+  var ldNewWrap = document.getElementById("ld-newschool-wrap");
+  ldSchool.addEventListener("change", function () {
+    ldNewWrap.classList.toggle("hidden", ldSchool.value !== "__new");
+    if (ldSchool.value === "__new") document.getElementById("ld-newschool").focus();
+  });
   function openLesDialog() {
     document.getElementById("ld-name").value = "";
+    document.getElementById("ld-newschool").value = "";
+    ldNewWrap.classList.add("hidden");
+    ldSchool.innerHTML = Object.keys(state.scholen).sort(function (a, b) { return a.localeCompare(b, "nl"); })
+      .map(function (n) { return '<option value="' + esc(n) + '"' + (n === state.school ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("")
+      + '<option value="__new">Andere school…</option>';
     lesDialog.showModal();
     document.getElementById("ld-name").focus();
   }
   lesDialog.addEventListener("close", function () {
     if (lesDialog.returnValue !== "ok") return;
-    var name = document.getElementById("ld-name").value.trim();
-    if (!name) return;
-    if (state.lessen.indexOf(name) !== -1) { toast("Die les bestaat al"); return; }
-    state.lessen.push(name);
-    state.organisatie = name;
-    save(); markSaved(); render();
+    var naam = document.getElementById("ld-name").value.trim();
+    if (!naam) return;
+    var school = ldSchool.value === "__new"
+      ? document.getElementById("ld-newschool").value.trim()
+      : ldSchool.value;
+    if (!school) { toast("Vul een school in"); return; }
+    if (state.lessen.some(function (l) { return l.naam === naam && l.school === school; })) { toast("Die les bestaat al"); return; }
+    if (!state.scholen[school]) state.scholen[school] = { klassen: {}, leerlingen: [], prullenbak: [] };
+    state.lessen.push({ naam: naam, school: school });
+    activeerLes({ naam: naam, school: school });
     toast("Les toegevoegd");
-  });
-
-  // ---------- School switch ----------
-  var schoolSel = document.getElementById("schoolSel");
-  schoolSel.addEventListener("change", function () {
-    var v = schoolSel.value;
-    if (v === "__add") {
-      schoolSel.value = state.school;
-      askPin("Voer de beheerderspincode in om een nieuwe school toe te voegen.").then(function (ok) {
-        if (!ok) { toast("Onjuiste pincode"); return; }
-        openSchoolDialog();
-      });
-      return;
-    }
-    state.school = v; selectedId = null; searchQ = "";
-    save(); markSaved(); render();
-  });
-
-  var schoolDialog = document.getElementById("schoolDialog");
-  function openSchoolDialog() {
-    document.getElementById("sd-name").value = "";
-    schoolDialog.showModal();
-    document.getElementById("sd-name").focus();
-  }
-  schoolDialog.addEventListener("close", function () {
-    if (schoolDialog.returnValue !== "ok") return;
-    var name = document.getElementById("sd-name").value.trim();
-    if (!name || state.scholen[name]) { if (state.scholen[name]) toast("Die school bestaat al"); return; }
-    state.scholen[name] = { klassen: {}, leerlingen: [], prullenbak: [] };
-    state.school = name; selectedId = null; searchQ = "";
-    save(); markSaved(); render();
-    toast("School toegevoegd");
   });
 
   // ---------- Leerling dialog ----------
@@ -1083,8 +1078,7 @@
   function paintBeheerPreview() {
     var el = document.getElementById("bf-preview");
     if (!el) return;
-    var sch = document.getElementById("bf-school").value || state.school;
-    el.textContent = "Leerlingen en klassen van het " + sch + ".";
+    el.textContent = "Klassen en lesuren van het " + state.school + ". Wissel van school via de les bovenaan.";
   }
   function klasAantal(k) {
     return cur().leerlingen.filter(function (l) { return l.klas === k; }).length;
@@ -1139,14 +1133,12 @@
   function openBeheer() {
     jaarUnlocked = false;
     beheerSchool = state.school;
-    var ss = document.getElementById("bf-school");
-    ss.innerHTML = Object.keys(state.scholen).sort().map(function (n) { return '<option value="' + esc(n) + '"' + (n === state.school ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
+    document.getElementById("bf-school").value = state.school;
     document.getElementById("bf-jaar").value = state.schooljaar;
     setBeheerLock(false);
     paintBeheerPreview();
     beheerDialog.showModal();
   }
-  document.getElementById("bf-school").addEventListener("change", paintBeheerPreview);
   document.getElementById("bf-unlock").addEventListener("click", function () {
     if (jaarUnlocked) return;
     askPin("Voer de beheerderspincode in om lesuren, klassen en het schooljaar te wijzigen.").then(function (ok) {
@@ -1212,9 +1204,6 @@
         bsc.klassen = nieuweKlassen;
       }
     }
-    // Actieve school wisselen
-    var chosen = document.getElementById("bf-school").value;
-    if (state.scholen[chosen] && chosen !== state.school) { state.school = chosen; selectedId = null; searchQ = ""; }
     save(); markSaved(); render();
   });
   beheerDialog.addEventListener("click", function (e) {
