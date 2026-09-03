@@ -48,9 +48,11 @@ Dat vult voorbeelddata en drie accounts:
 
 ## Documentatie
 
+- [`docs/OPLEVERING.md`](docs/OPLEVERING.md) - lokaal draaien, deployen en de pre-go-live-checklist.
 - [`docs/SETUP.md`](docs/SETUP.md) - Cloudflare-account, KV-namespace, secrets, deploy, Tailwind vervangen.
 - [`docs/DATAMODEL.md`](docs/DATAMODEL.md) - KV-keys en JSON-structuur.
 - [`docs/BEHEER.md`](docs/BEHEER.md) - het systeem beheren zonder developer.
+- [`docs/AVG.md`](docs/AVG.md) - wat er wordt opgeslagen, toegang, bewaartermijn, verwijderen.
 - [`docs/VRAGEN.md`](docs/VRAGEN.md) - antwoorden op de "vragen vooraf" uit de opdracht.
 
 ## Mapoverzicht

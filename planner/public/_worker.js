@@ -9,7 +9,7 @@
    inschrijvingen (append) zodat gelijktijdige schrijfacties niet verdwijnen.
    ========================================================================== */
 
-const VERSION = '2026-09-04.6';
+const VERSION = '2026-09-04.7';
 
 const KEYS = {
   config: 'config',
@@ -29,7 +29,7 @@ const DEFAULTS = {
   config: {
     _rev: 0,
     scholen: [], vakken: [], jaarlagen: [], blokken: [],
-    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true },
+    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18 },
   },
   resources: { _rev: 0, items: [], tombstones: {} },
   inschrijvingen: { _rev: 0, items: [], tombstones: {} },
@@ -69,6 +69,40 @@ function uid(n = 12) {
   crypto.getRandomValues(a);
   return Array.from(a, (b) => (b % 36).toString(36)).join('');
 }
+// echte CSPRNG-hex (geen modulo-bias); voor persoonlijke-link-tokens.
+function uidHex(bytes = 16) {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function sha256hex(s) {
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(String(s || '')));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------- rate-limiting (KV, per IP en per account) ------------------- */
+async function rateLimit(env, bucket, ids, max, windowSec) {
+  const list = Array.isArray(ids) ? ids : [ids];
+  const now = Date.now();
+  for (const id of list) {
+    if (!id) continue;
+    const key = 'rl:' + bucket + ':' + id;
+    let rec = null;
+    try { rec = JSON.parse((await env.PLANNER_KV.get(key)) || 'null'); } catch { /* ignore */ }
+    if (!rec || rec.reset < now) rec = { count: 0, reset: now + windowSec * 1000 };
+    rec.count++;
+    await env.PLANNER_KV.put(key, JSON.stringify(rec), { expirationTtl: windowSec + 10 });
+    if (rec.count > max) {
+      const retry = Math.max(1, Math.ceil((rec.reset - now) / 1000));
+      throw new HttpError(429, 'Te veel pogingen. Probeer het over ' + retry + ' seconden opnieuw.', { retryAfter: retry });
+    }
+  }
+}
+async function rateLimitReset(env, bucket, ids) {
+  for (const id of (Array.isArray(ids) ? ids : [ids])) {
+    if (id) { try { await env.PLANNER_KV.delete('rl:' + bucket + ':' + id); } catch { /* ignore */ } }
+  }
+}
 
 /* ---------- normalisatie ------------------------------------------------- */
 // slug zoals in beheer/index.html: kleine letters, niet-alnum -> "_", max 24.
@@ -95,7 +129,7 @@ function normalize(key, o) {
   if (key === 'config') {
     o.scholen = o.scholen || []; o.vakken = o.vakken || [];
     o.jaarlagen = o.jaarlagen || []; o.blokken = o.blokken || [];
-    o.instellingen = Object.assign({ groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true }, o.instellingen || {});
+    o.instellingen = Object.assign({ groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18 }, o.instellingen || {});
     for (const b of o.blokken) if (!Array.isArray(b.dagen) || !b.dagen.length) b.dagen = ['za', 'zo'];
   } else if (key === 'resources') {
     o.items = o.items || []; o.tombstones = o.tombstones || {};
@@ -207,14 +241,15 @@ async function verifySession(env, token) {
   if (!payload.exp || payload.exp < Date.now()) return null;
   return payload;
 }
+// Op https gebruiken we het __Host--prefix (Secure + Path=/ + geen Domain);
+// op http://localhost kan dat niet, dan valt het terug op 'yp_sess'.
+function sessCookieName(secure) { return secure ? '__Host-yp_sess' : 'yp_sess'; }
 function cookieHeader(token, maxAgeSec, secure) {
   const parts = [
-    'yp_sess=' + (token || ''),
+    sessCookieName(secure) + '=' + (token || ''),
     'Path=/', 'HttpOnly', 'SameSite=Lax',
     'Max-Age=' + (token ? maxAgeSec : 0),
   ];
-  // Secure alleen op https; anders weigeren browsers (o.a. Safari) de cookie op
-  // http://localhost en werkt inloggen lokaal niet.
   if (secure) parts.push('Secure');
   return parts.join('; ');
 }
@@ -222,6 +257,9 @@ function readCookie(req, name) {
   const c = req.headers.get('cookie') || '';
   const m = c.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
   return m ? m[1] : null;
+}
+function readSessCookie(req) {
+  return readCookie(req, '__Host-yp_sess') || readCookie(req, 'yp_sess');
 }
 async function pbkdf2(pw, saltBuf, iterations = 210000) {
   const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
@@ -232,6 +270,14 @@ async function hashPassword(pw) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await pbkdf2(pw, salt.buffer);
   return { salt: b64urlFromBuf(salt.buffer), hash };
+}
+// Gedeelde wachtwoordregels: minstens 10 tekens, niet op een korte zwakke-lijst.
+const ZWAKKE_WW = new Set(['wachtwoord', 'password', 'welkom01', 'welkom123', '1234567890', 'qwertyui', 'geheim123', 'yippie123']);
+function validatePassword(pw) {
+  pw = String(pw || '');
+  if (pw.length < 10) return 'Wachtwoord moet minstens 10 tekens zijn.';
+  if (ZWAKKE_WW.has(pw.toLowerCase())) return 'Kies een minder voor de hand liggend wachtwoord.';
+  return '';
 }
 async function checkPassword(pw, saltB64, hashB64) {
   const got = await pbkdf2(pw, b64urlToBuf(saltB64));
@@ -244,7 +290,7 @@ async function checkPassword(pw, saltB64, hashB64) {
 
 /* ---------- auth context --------------------------------------------------- */
 async function getAuth(env, req) {
-  const payload = await verifySession(env, readCookie(req, 'yp_sess'));
+  const payload = await verifySession(env, readSessCookie(req));
   if (!payload) return null;
   return { uid: payload.uid, rol: payload.rol, schoolId: payload.sid || null, resourceId: payload.rid || null, naam: payload.naam || '' };
 }
@@ -254,10 +300,10 @@ function requireRole(auth, rol) {
 }
 
 /* ---------- stub-mail --------------------------------------------------- */
-// Fase 1: geen echte verzending. Log de intentie zodat het in de Worker-logs
-// zichtbaar is; de UI toont zelf een mailto: / kopieerbare link.
-function stubMail(kind, to, data) {
-  console.log('[stub-mail]', kind, '->', to, JSON.stringify(data || {}));
+// Fase 1: geen echte verzending. Log alleen het type; geen e-mailadres, token of
+// naam in de logs (AVG). De UI toont zelf de kopieerbare link.
+function stubMail(kind) {
+  console.log('[stub-mail]', kind);
 }
 
 /* ---------- validatie inschrijving -------------------------------------- */
@@ -625,6 +671,12 @@ async function handleApi(request, env) {
   const secure = url.protocol === 'https:' || (request.headers.get('x-forwarded-proto') || '') === 'https';
   const body = ['POST', 'PUT', 'PATCH'].includes(method)
     ? await request.json().catch(() => ({})) : {};
+  const clientIp = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'onbekend';
+
+  // In productie MOET SESSION_SECRET gezet zijn; anders geen geldige sessies.
+  if ((env.ENV || 'production') === 'production' && !env.SESSION_SECRET) {
+    throw new HttpError(500, 'server niet correct geconfigureerd (SESSION_SECRET ontbreekt)');
+  }
 
   /* --- open --- */
   if (path === '/api/version') return json({ version: VERSION });
@@ -639,6 +691,9 @@ async function handleApi(request, env) {
     const email = cleanEmail(body.email);
     const pw = String(body.password || '');
     if (!email || !pw) throw new HttpError(400, 'e-mail en wachtwoord verplicht');
+    // Brute-force-rem: 5 mislukte pogingen per account, 20 per IP, per 15 min.
+    await rateLimit(env, 'login-acc', email, 5, 900);
+    await rateLimit(env, 'login-ip', clientIp, 20, 900);
     let users = await readJSON(env, KEYS.users);
     let user = users.items.find((u) => u.email === email);
 
@@ -655,6 +710,8 @@ async function handleApi(request, env) {
     if (!user || !user.hash) throw new HttpError(401, 'onjuiste inloggegevens');
     const ok = await checkPassword(pw, user.salt, user.hash);
     if (!ok) throw new HttpError(401, 'onjuiste inloggegevens');
+    await rateLimitReset(env, 'login-acc', email); // gelukt -> teller wissen
+    await rateLimitReset(env, 'login-ip', clientIp);
 
     const maxAge = 60 * 60 * 12;
     const token = await signSession(env, {
@@ -678,31 +735,46 @@ async function handleApi(request, env) {
   }
 
   if (path === '/api/inschrijving' && method === 'POST') {
+    await rateLimit(env, 'inschr', clientIp, 15, 3600); // 15 inschrijvingen / uur / IP
     const config = await readJSON(env, KEYS.config);
     const { fouten, clean } = validateInschrijving(body, config);
     if (fouten.length) throw new HttpError(400, fouten.join(' '));
     // Jaarlaag zoeken-of-aanmaken uit (niveau, leerjaar). Deterministische id zodat
     // gelijktijdige publieke inschrijvingen op dezelfde combinatie samenvallen.
     clean.jaarlaagId = await vindOfMaakJaarlaag(env, config, clean.niveau, clean.leerjaar);
+    // Persoonlijke-link-token: 128-bit hex; server bewaart alleen de SHA-256-hash.
+    const linkToken = uidHex(16);
     const rec = {
-      id: uid(), token: uid(24), ts: new Date().toISOString(), status: 'nieuw', ...clean,
+      id: uid(), tokenHash: await sha256hex(linkToken), ts: new Date().toISOString(), status: 'nieuw', ...clean,
     };
     await mutate(env, KEYS.inschrijvingen, (d) => {
       if (!d.items.find((x) => x.id === rec.id)) d.items.push(rec); // merge-safe append
       return d;
     });
-    stubMail('inschrijving-ontvangen', rec.ouder.email || rec.leerling.email, { token: rec.token });
-    return json({ ok: true, token: rec.token });
+    stubMail('inschrijving-ontvangen');
+    return json({ ok: true, token: linkToken });
   }
 
   /* --- persoonlijke pagina leerling/ouder (token) --- */
+  // token via ?token= of Authorization: Bearer; server vergelijkt op de hash.
+  if (path.startsWith('/api/mijn')) await rateLimit(env, 'mijn', clientIp, 40, 900);
+  const mijnToken = () => {
+    const h = request.headers.get('authorization') || '';
+    return str(h.toLowerCase().startsWith('bearer ') ? h.slice(7) : url.searchParams.get('token'), 64);
+  };
+  const vindOpToken = async (tk) => {
+    if (!tk) return null;
+    const ins = await readJSON(env, KEYS.inschrijvingen);
+    const h = await sha256hex(tk);
+    return { ins, rec: ins.items.find((x) => x.tokenHash === h || x.token === tk) || null };
+  };
+
   if (path === '/api/mijn' && method === 'GET') {
-    const token = str(url.searchParams.get('token'), 40);
+    const token = mijnToken();
     if (!token) throw new HttpError(400, 'token ontbreekt');
-    const [ins, rooster, config] = await Promise.all([
-      readJSON(env, KEYS.inschrijvingen), readJSON(env, KEYS.rooster), readJSON(env, KEYS.config),
+    const [{ rec }, rooster, config] = await Promise.all([
+      vindOpToken(token), readJSON(env, KEYS.rooster), readJSON(env, KEYS.config),
     ]);
-    const rec = ins.items.find((x) => x.token === token);
     if (!rec) throw new HttpError(404, 'niet gevonden');
     const naam = (n) => (config[n] || []).reduce((m, x) => (m[x.id] = x.label || x.naam, m), {});
     const schoolN = naam('scholen'), jaarN = naam('jaarlagen'), blokN = naam('blokken');
@@ -728,17 +800,27 @@ async function handleApi(request, env) {
   }
 
   if (path === '/api/mijn/afmelden' && method === 'POST') {
-    const token = str(url.searchParams.get('token'), 40);
     const sessieId = str(body.sessieId, 40);
-    const ins = await readJSON(env, KEYS.inschrijvingen);
-    const rec = ins.items.find((x) => x.token === token);
+    const { rec } = await vindOpToken(mijnToken());
     if (!rec) throw new HttpError(404, 'niet gevonden');
     await mutate(env, KEYS.rooster, (d) => {
       const s = d.sessies.find((x) => x.id === sessieId);
       if (s) s.leerlingIds = s.leerlingIds.filter((id) => id !== rec.id);
       return d;
     });
-    stubMail('afmelding', 'planning@yippie.test', { leerling: rec.leerling.naam, sessieId });
+    stubMail('afmelding');
+    return json({ ok: true });
+  }
+
+  if (path === '/api/mijn/verwijderverzoek' && method === 'POST') {
+    const { rec } = await vindOpToken(mijnToken());
+    if (!rec) throw new HttpError(404, 'niet gevonden');
+    await mutate(env, KEYS.inschrijvingen, (d) => {
+      const m = d.items.find((x) => x.id === rec.id);
+      if (m) m.verwijderVerzocht = new Date().toISOString();
+      return d;
+    });
+    stubMail('verwijderverzoek');
     return json({ ok: true });
   }
 
@@ -758,6 +840,33 @@ async function handleApi(request, env) {
     if (sub === 'inschrijvingen') {
       if (method === 'GET') return json(await readJSON(env, KEYS.inschrijvingen));
       if (method === 'PUT') return json(await putSection(env, KEYS.inschrijvingen, body, ['items']));
+      if (method === 'DELETE') {
+        // Definitief wissen (AVG): uit inschrijvingen + cascade uit rooster + aanwezigheid.
+        const id = str(url.searchParams.get('id'), 40);
+        if (!id) throw new HttpError(400, 'id ontbreekt');
+        await mutate(env, KEYS.inschrijvingen, (d) => {
+          d.items = d.items.filter((x) => x.id !== id);
+          d.tombstones = d.tombstones || {}; d.tombstones[id] = Date.now();
+          return d;
+        });
+        await mutate(env, KEYS.rooster, (d) => {
+          let veranderd = false;
+          for (const s of d.sessies) {
+            const n = (s.leerlingIds || []).length;
+            s.leerlingIds = (s.leerlingIds || []).filter((x) => x !== id);
+            if (s.leerlingIds.length !== n) veranderd = true;
+          }
+          return veranderd ? d : null;
+        });
+        await mutate(env, KEYS.aanwezigheid, (d) => {
+          let veranderd = false;
+          for (const sid of Object.keys(d.perSessie || {})) {
+            if (d.perSessie[sid][id] != null) { delete d.perSessie[sid][id]; veranderd = true; }
+          }
+          return veranderd ? d : null;
+        });
+        return json({ ok: true });
+      }
     }
     if (sub === 'rooster') {
       if (method === 'GET') return json(await readJSON(env, KEYS.rooster));
@@ -802,12 +911,16 @@ async function handleApi(request, env) {
       const out = await mutate(env, KEYS.rooster, (d) => { d.status = 'definitief'; return d; });
       const ins = await readJSON(env, KEYS.inschrijvingen);
       let mails = 0;
+      const ingedeeld = new Set();
+      for (const s of out.sessies) for (const id of (s.leerlingIds || [])) ingedeeld.add(id);
       for (const rec of ins.items) {
-        if (out.sessies.some((s) => s.leerlingIds.includes(rec.id))) {
-          stubMail('indeling-definitief', rec.ouder.email || rec.leerling.email, { token: rec.token });
-          mails++;
-        }
+        if (ingedeeld.has(rec.id)) { stubMail('indeling-definitief'); mails++; }
       }
+      await mutate(env, KEYS.inschrijvingen, (d) => {
+        let veranderd = false;
+        for (const r of d.items) if (r.status === 'nieuw' && ingedeeld.has(r.id)) { r.status = 'ingepland'; veranderd = true; }
+        return veranderd ? d : null;
+      });
       return json({ ok: true, status: 'definitief', mailsGepland: mails });
     }
     if (sub === 'users') {
@@ -819,7 +932,9 @@ async function handleApi(request, env) {
         const email = cleanEmail(body.email);
         const rol = ['beheerder', 'resource', 'mentor'].includes(body.rol) ? body.rol : null;
         const wachtwoord = String(body.wachtwoord || '');
-        if (!email || !rol || wachtwoord.length < 8) throw new HttpError(400, 'e-mail, rol en wachtwoord (min. 8 tekens) verplicht');
+        if (!email || !rol) throw new HttpError(400, 'e-mail en rol verplicht');
+        const pwFout = validatePassword(wachtwoord);
+        if (pwFout) throw new HttpError(400, pwFout);
         const { salt, hash } = await hashPassword(wachtwoord);
         const nu = {
           id: uid(), email, rol, naam: str(body.naam, 120) || email, salt, hash,
@@ -960,6 +1075,11 @@ async function handleApi(request, env) {
     if (path === '/api/dev/seed' && method === 'POST') return json(await seed(env));
     if (path === '/api/dev/reset' && method === 'POST') {
       await Promise.all(Object.values(KEYS).map((k) => env.PLANNER_KV.delete(k)));
+      // ook de rate-limit-tellers wissen zodat je meteen weer kunt inloggen
+      try {
+        const rl = await env.PLANNER_KV.list({ prefix: 'rl:' });
+        await Promise.all(rl.keys.map((x) => env.PLANNER_KV.delete(x.name)));
+      } catch { /* ignore */ }
       return json({ ok: true });
     }
   }
@@ -992,7 +1112,7 @@ async function seed(env) {
       { id: 'blok2', label: 'Blok 2 (na de kerstvakantie)', van: '2027-01-11', tot: '2027-02-14', dagen: ['za', 'zo'] },
       { id: 'blok3', label: 'Blok 3 (voorjaar, richting examens)', van: '2027-03-02', tot: '2027-04-19', dagen: ['za', 'zo'] },
     ],
-    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true },
+    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18 },
   };
   await mutate(env, KEYS.config, () => config);
 
@@ -1057,9 +1177,10 @@ export default {
         return await handleApi(request, env);
       } catch (e) {
         if (e instanceof HttpError) {
-          return json({ error: e.message, ...(e.extra || {}) }, e.status);
+          const h = e.extra && e.extra.retryAfter ? { 'retry-after': String(e.extra.retryAfter) } : {};
+          return json({ error: e.message, ...(e.extra || {}) }, e.status, h);
         }
-        console.error('worker-error', e && e.stack || e);
+        console.error('worker-error', e && e.name, e && e.message); // geen stack/PII in de logs
         return json({ error: 'interne fout' }, 500);
       }
     }

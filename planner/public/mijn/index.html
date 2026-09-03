@@ -50,7 +50,11 @@
       </div>
     </div>
 
-    <div class="notice info">Gegevens onjuist, of wil je je terugtrekken? Mail <a href="mailto:planning@yippievoordeklas.nl">planning@yippievoordeklas.nl</a>.</div>
+    <div class="notice info">
+      Gegevens onjuist? Mail <a href="mailto:planning@yippievoordeklas.nl">planning@yippievoordeklas.nl</a>.
+      Wil je je helemaal terugtrekken en je gegevens laten verwijderen?
+      <button class="link" id="v-verwijder" type="button">Verzoek tot verwijderen</button>.
+    </div>
   </div>
 </main>
 
@@ -153,6 +157,14 @@
       load();
     } catch (e) { YP.toast(e.message || 'Afmelden mislukt', 'bad'); }
   }
+
+  document.addEventListener('click', async function (e) {
+    if (!e.target.closest || !e.target.closest('#v-verwijder')) return;
+    var ok = await YP.confirm('Verzoek tot verwijderen sturen?', 'Yippie krijgt bericht en verwijdert je inschrijving en gegevens. Je plek in de sessies vervalt.', { ok: 'Versturen', danger: true });
+    if (!ok) return;
+    try { await YP.api.post('/api/mijn/verwijderverzoek?token=' + encodeURIComponent(token)); YP.toast('Verzoek verstuurd', 'ok'); }
+    catch (err) { YP.toast(err.message || 'Mislukt', 'bad'); }
+  });
 
   load();
 })();

@@ -497,6 +497,17 @@
       saveInschr(function (d) { var m = d.items.find(function (x) { return x.id === r.id; }); if (m) m.status = stSel.value; });
     });
     acties.appendChild(stSel);
+    var delBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', html: (YP.icon ? YP.icon('trash', { size: 14 }) : '') + ' Wissen' });
+    delBtn.addEventListener('click', async function () {
+      var ok1 = await YP.confirm('Inschrijving definitief wissen?', r.leerling.naam + ' - ' + schoolNaamVan(r) + '. Alle gegevens en sessie-koppelingen van deze leerling gaan weg.', { ok: 'Volgende', danger: true });
+      if (!ok1) return;
+      var ok2 = await YP.confirm('Zeker weten?', 'Dit kan niet ongedaan worden gemaakt.', { ok: 'Definitief wissen', danger: true });
+      if (!ok2) return;
+      try { await YP.api.del('/api/beheer/inschrijvingen?id=' + encodeURIComponent(r.id)); await refresh('inschrijvingen'); await refresh('rooster'); YP.toast('Gewist', 'ok'); render(); }
+      catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+    });
+    if (r.verwijderVerzocht) acties.appendChild(YP.el('span', { class: 'rijbadge bad', text: 'verwijderverzoek' }));
+    acties.appendChild(delBtn);
     bp.appendChild(acties);
 
     var contact = r.ouder.email || r.leerling.email || r.ouder.tel || r.leerling.tel || '';

@@ -63,17 +63,21 @@ Indicatief, één ontwikkelaar met AI-ondersteuning:
 ## 4. Aannames die jullie moeten checken
 
 - **Eén KV-namespace** met domein-keys volstaat; geen aparte namespace per domein.
-- **Sessie = stateless HMAC-cookie** (`yp_sess`, HttpOnly/Secure/SameSite=Lax),
-  geen KV-write per login. `__Host-`-prefix niet gebruikt zodat het ook op
-  `http://localhost` werkt; op productie mag dat alsnog aangezet worden.
-- **Wachtwoordlogin met tijdelijk wachtwoord** voor mentor/begeleider in fase 1;
-  magic-links via e-mail zijn fase 2. Wachtwoord-hash: PBKDF2-SHA256, 210k
-  iteraties, per-user salt.
+- **Sessie = stateless HMAC-cookie**, HttpOnly/SameSite=Lax, 12 uur. Op https het
+  `__Host-`-prefix (`__Host-yp_sess`); op `http://localhost` valt het terug op
+  `yp_sess`. Geen KV-write per login.
+- **Wachtwoordlogin met tijdelijk wachtwoord** voor mentor/begeleider; magic-links
+  via e-mail zijn fase 2. Hash: PBKDF2-SHA256, 210k iteraties, per-user salt.
+  Regels: min. 10 tekens, niet op een korte zwakke-lijst.
+- **Rate-limiting** (KV-teller): inloggen 5 mislukt / account / 15 min (20 / IP);
+  publiek inschrijven 15 / IP / uur; `/mijn`-tokenlookup 40 / IP / 15 min. Levert
+  `429` + `Retry-After`. Cloudflare-zone-regels + Turnstile blijven aanbevolen als
+  eerste laag (zie `OPLEVERING.md`).
+- **Persoonlijke link**: 128-bit token, server bewaart alleen de SHA-256-hash;
+  het token gaat ook via `Authorization: Bearer` mee en wordt niet gelogd.
 - **Tailwind** is nu een handmatige subset (geen toolchain), met
   Tailwind-compatibele klassen; de echte CLI-build kan later zonder de pagina's
   te wijzigen.
-- **Geen captcha/rate-limit** op het publieke inschrijfformulier in fase 1;
-  Cloudflare Turnstile is een kleine toevoeging voor fase 2.
 - **Alleen naam + contact + jaarlaag/vak** worden opgeslagen, geen leerlingnummer
   (AVG, minderjarigen). Bewaartermijn en verwerkersovereenkomst per school buiten
   de code afspreken.

@@ -7,7 +7,8 @@
     "dev": "wrangler pages dev public --kv PLANNER_KV --binding ENV=dev SESSION_SECRET=dev-secret-change-me SEED_ADMIN_EMAIL=beheer@yippie.test SEED_ADMIN_PASS=beheer1234 --port 8788",
     "deploy": "wrangler pages deploy public",
     "cron:dev": "wrangler dev --config cron-worker/wrangler.toml --test-scheduled",
-    "cron:deploy": "wrangler deploy --config cron-worker/wrangler.toml"
+    "cron:deploy": "wrangler deploy --config cron-worker/wrangler.toml",
+    "check": "node scripts/check.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.20.0"
