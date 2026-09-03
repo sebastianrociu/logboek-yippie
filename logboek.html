@@ -195,10 +195,7 @@
   .entry-sum:hover,.entry-sum:active,.entry.open .entry-sum{background:#FFF8F7}
   .entry-sum .d{font-weight:900;font-size:13px;white-space:nowrap;min-width:46px;color:var(--ink)}
   .entry-sum .eb{flex:1;min-width:0}
-  .entry-sum .aw{font-size:12px;color:var(--mute);font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .aanw-badge{font-size:10.5px;font-weight:800;letter-spacing:.02em;padding:2px 7px;border-radius:6px;text-transform:uppercase}
-  .aanw-badge.afwezig{background:#FEE2E2;color:#B91C1C}
-  .aanw-badge.telaat{background:#FEF3C7;color:#92400E}
+  .entry-sum .aw{font-size:12px;color:var(--mute);font-weight:600}
   .entry-sum .nt{font-size:13.5px;color:var(--ink-2);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .entry-sum .chev{color:var(--chev);font-size:16px;font-weight:700}
   .entry-edit{display:none;padding:2px 6px 16px}
@@ -350,11 +347,10 @@
 <dialog id="introDialog" closedby="any" aria-labelledby="introTitle">
   <div class="dlg">
     <h3 id="introTitle">Wat wordt er van je verwacht?</h3>
-    <p class="dsub">Vul het logboek tijdens of direct na je uur in, voor elke leerling die er hoorde te zijn, ook als iemand er niet was. Zo kunnen de school en de mentoren volgen hoe het gaat.</p>
+    <p class="dsub">Na je uur noteer je per leerling kort wat die heeft gedaan. Zo kunnen de school en de mentoren volgen hoe het gaat.</p>
     <ol class="intro-steps">
-      <li><b>Kies de leerling</b> in de lijst. Staat die er nog niet? Klik op <b>+ Nieuwe leerling</b>.</li>
-      <li><b>Zet de aanwezigheid:</b> aanwezig, afwezig of te laat.</li>
-      <li><b>Schrijf een korte notitie:</b> waaraan gewerkt, wat ging goed, volgende stap. Bij afwezig eventueel een reden. Datum en lesuur staan er al.</li>
+      <li><b>Kies de leerling</b> die er was. Staat die er nog niet? Klik op <b>+ Nieuwe leerling</b>.</li>
+      <li><b>Schrijf een korte notitie:</b> waaraan gewerkt, wat ging goed, wat is de volgende stap. Datum en lesuur staan er al.</li>
       <li><b>Klik “Toevoegen aan logboek”.</b> Opslaan gaat vanzelf.</li>
     </ol>
     <p class="intro-note">Blijf bij het schoolwerk. Niets over gezondheid, gedrag of thuis. Iets per ongeluk weg? Onderin de lijst staat de prullenbak. Deze uitleg vind je altijd terug via <b>?</b> rechtsboven.</p>
@@ -562,7 +558,6 @@
           if (e.lesuren == null) e.lesuren = "";
           if (e.lesVan == null) e.lesVan = "";
           if (e.lesTot == null) e.lesTot = "";
-          if (e.aanw == null) e.aanw = "aanwezig";
           if (!e.id) e.id = uid();
         });
       });
@@ -710,18 +705,7 @@
   }
   function readScope(scope) {
     function g(f) { var el = scope.querySelector('[data-f="' + f + '"]'); return el ? el.value : ""; }
-    return { aanw: g("aanw") || "aanwezig", datum: g("datum"), lesVan: g("lesVan"), lesTot: g("lesTot"), lesuren: g("lesuren"), van: g("van"), tot: g("tot"), notitie: g("notitie") };
-  }
-  var AANW = { aanwezig: "Aanwezig", afwezig: "Afwezig", telaat: "Te laat" };
-  function aanwSelect(sel) {
-    sel = sel || "aanwezig";
-    return '<select data-f="aanw">' + Object.keys(AANW).map(function (k) {
-      return '<option value="' + k + '"' + (k === sel ? " selected" : "") + ">" + AANW[k] + "</option>";
-    }).join("") + "</select>";
-  }
-  function aanwBadge(k) {
-    if (!k || k === "aanwezig") return "";
-    return '<span class="aanw-badge ' + k + '">' + AANW[k] + "</span>";
+    return { datum: g("datum"), lesVan: g("lesVan"), lesTot: g("lesTot"), lesuren: g("lesuren"), van: g("van"), tot: g("tot"), notitie: g("notitie") };
   }
 
   // ---------- Render: header + context ----------
@@ -783,8 +767,7 @@
       ? '<div class="field"><label>Van lesuur</label><select data-f="lesVan">' + lesuurOpts(d.lesVan) + "</select></div>" +
         '<div class="field"><label>Tot lesuur</label><select data-f="lesTot">' + lesuurOpts(d.lesTot) + "</select></div>"
       : '<div class="field span2"><label>Lesuren</label><input class="input" type="text" data-f="lesuren" value="' + esc(d.lesuren || "") + '" placeholder="bijv. 1e t/m 4e uur"></div>';
-    return '<div class="field"><label>Aanwezigheid</label>' + aanwSelect(d.aanw) + "</div>" +
-      '<div class="cgrid">' +
+    return '<div class="cgrid">' +
         '<div class="field"><label>Datum</label><input class="input" type="date" data-f="datum" value="' + esc(d.datum || todayISO()) + '"></div>' +
         lesFields +
       "</div>" +
@@ -793,7 +776,7 @@
         '<input class="input" type="time" data-f="tot" value="' + esc(d.tot || "") + '"></div>' +
         (rooster() ? '<p class="hint">Past zich automatisch aan op de gekozen lesuren.</p>' : "") +
       "</div>" +
-      '<div class="field"><label>Notitie</label><textarea data-f="notitie" placeholder="Wat heeft de leerling gedaan? Bij afwezig: eventueel een reden.">' + esc(d.notitie || "") + "</textarea></div>";
+      '<div class="field"><label>Notitie</label><textarea data-f="notitie" placeholder="Wat heeft de leerling gedaan?">' + esc(d.notitie || "") + "</textarea></div>";
   }
 
   function entryHTML(e) {
@@ -805,12 +788,11 @@
     return '<div class="entry" data-id="' + e.id + '">' +
       '<button class="entry-sum" type="button">' +
         '<span class="d">' + fmtDate(e.datum) + "</span>" +
-        '<span class="eb"><span class="aw">' + aanwBadge(e.aanw) + (esc(aanwezigheid(e)) || "-") + "</span>" +
+        '<span class="eb"><span class="aw">' + (esc(aanwezigheid(e)) || "-") + "</span>" +
         '<span class="nt">' + nt + "</span></span>" +
         '<span class="chev">›</span>' +
       "</button>" +
       '<div class="entry-edit">' +
-        '<div class="field"><label>Aanwezigheid</label>' + aanwSelect(e.aanw) + "</div>" +
         '<div class="cgrid">' +
           '<div class="field"><label>Datum</label><input class="input" type="date" data-f="datum" value="' + esc(e.datum) + '"></div>' +
           lesFields +
@@ -879,12 +861,11 @@
   // ---------- Entry actions ----------
   function commitDraft() {
     var id = selectedId, d = state.drafts[id] || {};
-    var afw = d.aanw && d.aanw !== "aanwezig";
-    var has = afw || (d.notitie && d.notitie.trim()) || d.lesVan || (d.lesuren && d.lesuren.trim()) || d.van || d.tot;
-    if (!has) { toast("Vul een notitie in, of zet de aanwezigheid"); return; }
+    var has = (d.notitie && d.notitie.trim()) || d.lesVan || (d.lesuren && d.lesuren.trim()) || d.van || d.tot;
+    if (!has) { toast("Vul eerst een notitie of lesuur in"); return; }
     var l = getLeerling(id);
     var e = {
-      id: uid(), aanw: d.aanw || "aanwezig", datum: d.datum || todayISO(),
+      id: uid(), datum: d.datum || todayISO(),
       lesVan: d.lesVan || "", lesTot: d.lesTot || d.lesVan || "",
       lesuren: "", van: d.van || "", tot: d.tot || "", notitie: (d.notitie || "").trim()
     };
@@ -1003,7 +984,6 @@
       var en = findEntry(editScope.closest(".entry").dataset.id);
       if (!en) return;
       var vals = readScope(editScope);
-      en.aanw = vals.aanw;
       en.datum = vals.datum; en.lesVan = vals.lesVan; en.lesTot = vals.lesTot;
       en.van = vals.van; en.tot = vals.tot; en.notitie = vals.notitie;
       en.lesuren = rooster() ? lesLabel(en.lesVan, en.lesTot) : vals.lesuren;
