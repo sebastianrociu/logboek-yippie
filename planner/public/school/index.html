@@ -20,6 +20,8 @@
   <div id="panel"><div class="card card-pad"><div class="empty">Laden...</div></div></div>
 </main>
 
+<div id="printSheet" class="print-sheet" aria-hidden="true"></div>
+
 <dialog id="introDialog" aria-labelledby="introTitle">
   <div class="dlg">
     <h3 id="introTitle">Het overzicht van je school</h3>
@@ -47,10 +49,14 @@
   var panel = document.getElementById('panel');
   var listHost = null;
   var alle = [];
+  var schoolNaam = '', roosterStatus = '';
   var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag' };
   var AWNAAM = { aanwezig: 'aanwezig', afwezig: 'afwezig', afgemeld: 'afgemeld' };
+  var TRAJ = { examentraining: 'Examentraining', bijspijker: 'Bijspijker' };
   function ico(n, o) { return YP.icon ? YP.icon(n, o) : ''; }
   function kortDatum(iso) { var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso; return new Date(t).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }); }
+  function langDatum(iso) { var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso; return new Date(t).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function sTijd(s) { return s.van && s.tot ? s.van + '-' + s.tot : (DDNAAM[s.dagdeel] || s.dagdeel); }
 
   function render(zoek) {
     listHost.innerHTML = '';
@@ -90,50 +96,129 @@
 
   function leerlingDialog(l) {
     var dlg = document.createElement('dialog');
-    dlg.style.maxWidth = '520px';
+    dlg.style.maxWidth = '560px';
     dlg.innerHTML = '<div class="dlg"><h3></h3><p class="dsub"></p><div class="db"></div>' +
       '<div class="dlg-actions"><button type="button" class="btn btn-primary btn-sm" data-close>Sluiten</button></div></div>';
     dlg.querySelector('h3').textContent = l.leerling;
-    dlg.querySelector('.dsub').textContent = l.jaarlaag + (l.traject ? '  -  ' + (l.traject === 'examentraining' ? 'Examentraining' : 'Bijspijkertraject') : '') + (l.mentor ? '  -  mentor ' + l.mentor : '');
+    dlg.querySelector('.dsub').textContent = [l.jaarlaag, TRAJ[l.traject] || l.traject, l.mentor ? 'mentor ' + l.mentor : ''].filter(Boolean).join('  -  ');
     var db = dlg.querySelector('.db');
 
+    // Vakken gevolgd (uit de sessies)
     var gevolgd = (l.vakkenGevolgd && l.vakkenGevolgd.length) ? l.vakkenGevolgd : [];
     db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:6px', text: 'Vakken gevolgd' }));
     if (gevolgd.length) {
-      var chips = YP.el('div', { class: 'chipset', style: 'margin-bottom:8px' });
+      var chips = YP.el('div', { class: 'chipset', style: 'margin-bottom:4px' });
       gevolgd.forEach(function (v) { chips.appendChild(YP.el('span', { class: 'chip-check' }, [YP.el('span', { text: v })])); });
       db.appendChild(chips);
     } else {
-      db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 8px', text: l.ingedeeld ? '-' : 'Nog geen sessies gevolgd.' }));
+      db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 4px', text: l.ingedeeld ? '-' : 'Nog geen sessies gevolgd.' }));
     }
-    db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 14px', text: 'Ingeschreven voor: ' + (l.vakken.join(', ') || '-') + ((l.blokken || []).length ? '  -  ' + l.blokken.join('; ') : '') }));
 
-    db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:6px', text: 'Sessies' }));
-    if (!l.sessies.length) db.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies. Verschijnt zodra de planning definitief is.' }));
-    var lst = YP.el('div', { class: 'list' });
-    l.sessies.forEach(function (s) {
-      var meta = [DDNAAM[s.dagdeel] || s.dagdeel, s.blok, s.locatie, s.begeleider].filter(Boolean).join('  -  ');
-      var row = YP.el('div', {}, [
-        YP.el('div', { class: 'list-row' }, [
-          YP.el('span', { class: 'lr-main' }, [
-            YP.el('span', { class: 'lr-title', text: s.vak }),
-            YP.el('span', { class: 'lr-sub', text: (s.datum ? kortDatum(s.datum) : 'datum volgt') + (meta ? '  -  ' + meta : '') })
-          ]),
-          s.aanwezigheid ? YP.el('span', { class: 'badge ' + (s.aanwezigheid === 'aanwezig' ? 'ok' : s.aanwezigheid === 'afwezig' ? 'bad' : 'warn'), text: AWNAAM[s.aanwezigheid] || s.aanwezigheid }) : null
-        ])
-      ]);
-      if (s.notitie) row.appendChild(YP.el('p', { class: 'hint', style: 'margin:2px 0 8px 4px', text: 'Notitie begeleider: ' + s.notitie }));
-      lst.appendChild(row);
-    });
-    db.appendChild(lst);
+    // Ingeschreven voor (subtiel, als tabel)
+    db.appendChild(YP.el('p', { class: 'label', style: 'margin:14px 0 6px', text: 'Ingeschreven voor' }));
+    if ((l.vakken || []).length || (l.blokken || []).length) {
+      db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0' }, [
+        YP.el('b', { text: (l.vakken || []).join(', ') || '-' }),
+        document.createTextNode((l.blokken || []).length ? '  in  ' + l.blokken.join('; ') : '')
+      ]));
+    } else {
+      db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0', text: '-' }));
+    }
+
+    // Sessies als tabel: Datum | Tijd | Vak | Begeleider | Aanwezig
+    db.appendChild(YP.el('p', { class: 'label', style: 'margin:14px 0 6px', text: 'Sessies' }));
+    if (!l.sessies.length) {
+      db.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies. Verschijnt zodra de planning definitief is.' }));
+    } else {
+      var tbl = YP.el('table', { class: 'tbl' });
+      tbl.appendChild(YP.el('thead', {}, [YP.el('tr', {}, [
+        YP.el('th', { text: 'Datum' }), YP.el('th', { text: 'Tijd' }), YP.el('th', { text: 'Vak' }),
+        YP.el('th', { text: 'Begeleider' }), YP.el('th', { text: 'Aanwezig' })
+      ])]));
+      var tb = YP.el('tbody', {});
+      l.sessies.slice().sort(function (a, b) { return (a.datum || '9') < (b.datum || '9') ? -1 : 1; }).forEach(function (s) {
+        tb.appendChild(YP.el('tr', {}, [
+          YP.el('td', { text: s.datum ? kortDatum(s.datum) : 'volgt' }),
+          YP.el('td', { class: 'mono', text: sTijd(s) }),
+          YP.el('td', { text: s.vak + (s.locatie ? '  (' + s.locatie + ')' : '') }),
+          YP.el('td', { text: s.begeleider || '-' }),
+          YP.el('td', {}, [s.aanwezigheid
+            ? YP.el('span', { class: 'badge ' + (s.aanwezigheid === 'aanwezig' ? 'ok' : s.aanwezigheid === 'afwezig' ? 'bad' : 'warn'), text: AWNAAM[s.aanwezigheid] || s.aanwezigheid })
+            : document.createTextNode('-')])
+        ]));
+      });
+      tbl.appendChild(tb);
+      db.appendChild(YP.el('div', { class: 'tbl-wrap' }, [tbl]));
+
+      // notities per sessie eronder, apart en rustig
+      var metNotitie = l.sessies.filter(function (s) { return s.notitie; });
+      if (metNotitie.length) {
+        db.appendChild(YP.el('p', { class: 'label', style: 'margin:12px 0 4px', text: 'Notities van de begeleider' }));
+        metNotitie.forEach(function (s) {
+          db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 4px' }, [
+            YP.el('b', { text: (s.datum ? kortDatum(s.datum) : '') + ' ' + s.vak + ': ' }),
+            document.createTextNode(s.notitie)
+          ]));
+        });
+      }
+    }
+
     if (l.aanwezigheid && (l.aanwezigheid.aanwezig || l.aanwezigheid.afwezig || l.aanwezigheid.afgemeld)) {
-      db.appendChild(YP.el('p', { class: 'hint', style: 'margin-top:10px', text: 'Totaal: ' + l.aanwezigheid.aanwezig + 'x aanwezig, ' + l.aanwezigheid.afwezig + 'x afwezig, ' + l.aanwezigheid.afgemeld + 'x afgemeld.' }));
+      db.appendChild(YP.el('p', { class: 'hint', style: 'margin-top:12px', text: 'Totaal: ' + l.aanwezigheid.aanwezig + 'x aanwezig, ' + l.aanwezigheid.afwezig + 'x afwezig, ' + l.aanwezigheid.afgemeld + 'x afgemeld.' }));
     }
 
     document.body.appendChild(dlg);
     dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
     dlg.addEventListener('close', function () { dlg.remove(); });
     dlg.showModal();
+  }
+
+  // ---- formeel afdruk-/pdf-sjabloon --------------------------------------
+  function bouwPrintSheet() {
+    var host = document.getElementById('printSheet');
+    host.innerHTML = '';
+    var nu = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+    host.appendChild(YP.el('div', { class: 'ps-head' }, [
+      YP.el('div', {}, [
+        YP.el('div', { class: 'ps-brand', text: 'Yippie voor de klas' }),
+        YP.el('h1', { text: 'Deelnameoverzicht ' + schoolNaam })
+      ]),
+      YP.el('div', { class: 'ps-meta', html: 'Afgedrukt op ' + nu + '<br>Planning: ' + roosterStatus + '<br>' + alle.length + ' leerling(en)' })
+    ]));
+
+    var perJaar = {};
+    alle.forEach(function (l) { var k = l.jaarlaag || '(onbekend)'; (perJaar[k] = perJaar[k] || []).push(l); });
+    Object.keys(perJaar).sort().forEach(function (jr) {
+      perJaar[jr].slice().sort(function (a, b) { return a.leerling < b.leerling ? -1 : 1; }).forEach(function (l) {
+        var box = YP.el('div', { class: 'ps-leerling' });
+        box.appendChild(YP.el('h2', { text: l.leerling }));
+        box.appendChild(YP.el('div', { class: 'ps-sub', text: [l.jaarlaag, TRAJ[l.traject] || l.traject, l.mentor ? 'mentor ' + l.mentor : '', 'status: ' + l.status].filter(Boolean).join('  ·  ') }));
+        box.appendChild(YP.el('div', { class: 'ps-sub', text: 'Vakken gevolgd: ' + ((l.vakkenGevolgd && l.vakkenGevolgd.join(', ')) || '-') + '   |   Ingeschreven: ' + ((l.vakken || []).join(', ') || '-') }));
+        if (l.sessies.length) {
+          var tbl = YP.el('table', {}, [YP.el('thead', {}, [YP.el('tr', {}, [
+            YP.el('th', { text: 'Datum' }), YP.el('th', { text: 'Tijd' }), YP.el('th', { text: 'Vak' }),
+            YP.el('th', { text: 'Begeleider' }), YP.el('th', { text: 'Aanwezig' }), YP.el('th', { text: 'Notitie' })
+          ])])]);
+          var tb = YP.el('tbody', {});
+          l.sessies.slice().sort(function (a, b) { return (a.datum || '9') < (b.datum || '9') ? -1 : 1; }).forEach(function (s) {
+            tb.appendChild(YP.el('tr', {}, [
+              YP.el('td', { text: s.datum ? langDatum(s.datum) : 'volgt' }),
+              YP.el('td', { text: sTijd(s) }),
+              YP.el('td', { text: s.vak }),
+              YP.el('td', { text: s.begeleider || '-' }),
+              YP.el('td', { text: s.aanwezigheid ? (AWNAAM[s.aanwezigheid] || s.aanwezigheid) : '' }),
+              YP.el('td', { text: s.notitie || '' })
+            ]));
+          });
+          tbl.appendChild(tb);
+          box.appendChild(tbl);
+        } else {
+          box.appendChild(YP.el('p', { class: 'ps-sub', text: 'Nog geen sessies ingepland.' }));
+        }
+        host.appendChild(box);
+      });
+    });
+    host.appendChild(YP.el('div', { class: 'ps-foot', text: 'Vertrouwelijk. Uitsluitend voor intern gebruik door ' + schoolNaam + '. Vragen: planning@yippievoordeklas.nl' }));
   }
 
   async function load() {
@@ -144,12 +229,13 @@
     if (!d.school) { panel.innerHTML = '<div class="card card-pad"><div class="notice warn">Je account is nog niet aan een school gekoppeld. Vraag Yippie dit te doen.</div></div>'; return; }
 
     alle = d.leerlingen || [];
+    schoolNaam = d.school; roosterStatus = d.roosterStatus;
     var ingedeeld = alle.filter(function (l) { return l.ingedeeld > 0; }).length;
     panel.innerHTML = '';
 
     var kop = YP.el('div', { class: 'card card-pad', style: 'margin-bottom:14px' });
-    var printBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', html: ico('download', { size: 14 }) + ' Afdrukken of pdf' });
-    printBtn.addEventListener('click', function () { window.print(); });
+    var printBtn = YP.el('button', { class: 'btn btn-primary btn-sm', html: ico('download', { size: 14 }) + ' Afdrukken of pdf' });
+    printBtn.addEventListener('click', function () { bouwPrintSheet(); setTimeout(function () { window.print(); }, 30); });
     kop.appendChild(YP.el('div', { class: 'spread' }, [
       YP.el('div', {}, [
         YP.el('h2', { text: d.school }),

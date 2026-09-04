@@ -176,11 +176,14 @@
     var list = $('v-sessies'); list.innerHTML = '';
     if (data.roosterStatus === 'definitief' && !data.sessies.length) $('v-geen').classList.remove('hidden');
     data.sessies.forEach(function (s) {
-      var titel = s.vak + (s.datum ? ' - ' + s.datum : (s.dag ? ' - ' + (DAGNAAM[s.dag] || s.dag) : ''));
+      var wanneer = s.datum
+        ? s.datum + (s.van && s.tot ? '  -  ' + s.van + ' tot ' + s.tot : '')
+        : (s.dag ? (DAGNAAM[s.dag] || s.dag) : '');
+      var titel = s.vak + (wanneer ? '  -  ' + wanneer : '');
       var row = YP.el('div', { class: 'list-row' }, [
         YP.el('span', { class: 'lr-main' }, [
           YP.el('span', { class: 'lr-title', text: titel }),
-          YP.el('span', { class: 'lr-sub', text: [s.blok, DDNAAM[s.dagdeel] || s.dagdeel, s.locatie, s.begeleider].filter(Boolean).join(' - ') })
+          YP.el('span', { class: 'lr-sub', text: [s.blok, s.locatie, s.begeleider].filter(Boolean).join(' - ') })
         ]),
         YP.el('button', { class: 'btn btn-ghost btn-sm', 'data-s': s.id }, ['Afmelden'])
       ]);
