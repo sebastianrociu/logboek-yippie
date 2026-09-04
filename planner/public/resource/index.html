@@ -23,9 +23,9 @@
     <h3 id="introTitle">Jouw rooster en beschikbaarheid</h3>
     <p class="dsub">Zo weet Yippie wanneer ze je kunnen inplannen.</p>
     <ol class="intro-steps">
-      <li><b>Beschikbaarheid.</b> Tik de weekenddagen aan waarop je kunt, per ochtend of middag.</li>
-      <li><b>Voorkeuren.</b> Geef aan welke vakken je het liefst geeft.</li>
-      <li><b>Je sessies.</b> Zodra het rooster rond is, zie je hier wanneer en waar je verwacht wordt.</li>
+      <li><b>Beschikbaarheid.</b> Je staat standaard elke trainingsdag beschikbaar. Zet een dagdeel uit als je die dag niet kunt; het liefst hele dagen.</li>
+      <li><b>Voorkeuren.</b> Geef aan welke vakken en jaarlagen je het liefst geeft. Mis je een vak in de lijst? Vul het los in.</li>
+      <li><b>Je sessies.</b> Zodra het rooster rond is, zie je wanneer en waar je verwacht wordt, met examentraining of bijspijker en de jaarlaag. Op de dag zelf zet je de aanwezigheid en een korte notitie.</li>
     </ol>
     <p class="intro-note">Je vakken en jaarlagen stelt Yippie in. Klopt daar iets niet? Geef het door. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
     <div class="dlg-actions">
@@ -44,10 +44,12 @@
   var $ = function (id) { return document.getElementById(id); };
   var panel = $('panel');
   var data = null;
-  var slots = [];          // {datum, dagdeel}
-  var voorkeuren = [];     // vakIds
+  var afw = [];             // {datum, dagdeel} - dagdelen waarop ik NIET kan
+  var voorkeuren = [];      // vakIds
+  var vkJaar = [];          // jaarlaag-ids
   var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag' };
   var DAGNAAM = { za: 'Za', zo: 'Zo' };
+  var TRAJ = { examentraining: 'Examentraining', bijspijker: 'Bijspijker' };
   function ico(n, o) { return YP.icon ? YP.icon(n, o) : ''; }
 
   function weekendDatums(van, tot, dagen) {
@@ -65,15 +67,23 @@
     var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso;
     return new Date(t).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
   }
-  function heeftSlot(datum, dd) { return slots.some(function (s) { return s.datum === datum && s.dagdeel === dd; }); }
-  function toggleSlot(datum, dd) {
-    if (heeftSlot(datum, dd)) slots = slots.filter(function (s) { return !(s.datum === datum && s.dagdeel === dd); });
-    else slots.push({ datum: datum, dagdeel: dd });
+  function kanNiet(datum, dd) { return afw.some(function (s) { return s.datum === datum && s.dagdeel === dd; }); }
+  function zetKanNiet(datum, dd, uit) {
+    var er = kanNiet(datum, dd);
+    if (uit && !er) afw.push({ datum: datum, dagdeel: dd });
+    else if (!uit && er) afw = afw.filter(function (s) { return !(s.datum === datum && s.dagdeel === dd); });
+  }
+
+  // dubbelboeking: twee sessies op hetzelfde datum+dagdeel
+  function dubbel(s) {
+    if (!s.datum) return false;
+    return data.sessies.filter(function (x) { return x.datum === s.datum && x.dagdeel === s.dagdeel; }).length > 1;
   }
 
   function paint() {
     panel.innerHTML = '';
     var r = data.resource || {};
+    var vandaag = new Date().toISOString().slice(0, 10);
 
     // ---- Wanneer word je verwacht ----
     var rc = YP.el('div', { class: 'card' });
@@ -84,22 +94,31 @@
     var rp = YP.el('div', { class: 'card-pad' });
     if (data.roosterStatus !== 'definitief') rp.appendChild(YP.el('div', { class: 'notice info', style: 'margin-bottom:12px', text: 'Het rooster is nog niet definitief. Dit is de voorlopige indeling.' }));
     if (!data.sessies.length) rp.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies aan jou gekoppeld.' }));
-    var vandaag = new Date().toISOString().slice(0, 10);
+
     data.sessies.forEach(function (s) {
       var box = YP.el('div', { class: 'card', style: 'box-shadow:none;border-color:var(--divider);margin-bottom:10px' });
       var bp = YP.el('div', { class: 'card-pad', style: 'padding:12px 14px' });
+
+      var pills = YP.el('div', { class: 'aandacht-strip', style: 'margin-bottom:6px' }, [
+        YP.el('span', { class: 'rijbadge ' + (s.traject === 'examentraining' ? 'warn' : 'info'), text: TRAJ[s.traject] || 'Training' })
+      ]);
+      if (s.jaarlaag) pills.appendChild(YP.el('span', { class: 'rijbadge info', text: s.jaarlaag }));
+      if (dubbel(s)) pills.appendChild(YP.el('span', { class: 'rijbadge bad', text: 'dubbel gepland' }));
+      bp.appendChild(pills);
+
       bp.appendChild(YP.el('div', { class: 'spread' }, [
         YP.el('div', { class: 'lr-main' }, [
           YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? '  -  ' + kortDatum(s.datum) : (s.dag ? '  -  ' + (DAGNAAM[s.dag] || s.dag) + ' (datum volgt)' : '  -  datum volgt')) }),
           YP.el('span', { class: 'lr-sub', text: [DDNAAM[s.dagdeel] || s.dagdeel, s.blok, s.locatie, s.leerlingen.length + ' leerling(en)'].filter(Boolean).join('  -  ') })
         ]),
         (function () {
-          if (!s.definitief || !s.datum || s.datum > vandaag) return null;
-          var b = YP.el('button', { class: 'btn btn-ghost btn-sm', html: ico('check', { size: 14 }) + ' Aanwezigheid' });
+          if (!s.definitief || (s.datum && s.datum > vandaag)) return null;
+          var b = YP.el('button', { class: 'btn btn-primary btn-sm', html: ico('check', { size: 14 }) + ' Aanwezigheid en notitie' });
           b.addEventListener('click', function () { aanwezigheidDialog(s); });
           return b;
         })()
       ]));
+      if (s.notitie) bp.appendChild(YP.el('p', { class: 'hint', style: 'margin-top:6px', text: 'Jouw notitie: ' + s.notitie }));
       box.appendChild(bp);
       rp.appendChild(box);
     });
@@ -107,47 +126,78 @@
     panel.appendChild(rc);
 
     if (!r.id) {
-      var w = YP.el('div', { class: 'card card-pad' }, [YP.el('div', { class: 'notice warn', text: 'Je account is nog niet aan een begeleider gekoppeld. Vraag Yippie dit te doen.' })]);
-      panel.appendChild(w);
+      panel.appendChild(YP.el('div', { class: 'card card-pad' }, [YP.el('div', { class: 'notice warn', text: 'Je account is nog niet aan een begeleider gekoppeld. Vraag Yippie dit te doen.' })]));
       return;
     }
 
-    // ---- Beschikbaarheid: weekend-kalender ----
+    // ---- Beschikbaarheid: standaard beschikbaar, klik = "kan niet" ----
     var bc = YP.el('div', { class: 'card' });
     bc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Mijn beschikbaarheid' })]));
     var bp2 = YP.el('div', { class: 'card-pad' });
-    bp2.appendChild(YP.el('p', { class: 'hint', style: 'margin-bottom:10px', text: 'Tik de dagdelen aan waarop je kunt. Groen = beschikbaar.' }));
+    bp2.appendChild(YP.el('p', { class: 'hint', style: 'margin-bottom:12px', text: 'Je staat standaard elke trainingsdag beschikbaar. Zet een dagdeel uit als je die dag niet kunt; het liefst hele dagen.' }));
 
     var blokWrap = YP.el('div', {});
     function paintKalender() {
       blokWrap.innerHTML = '';
-      (data.blokken || []).forEach(function (b) {
-        blokWrap.appendChild(YP.el('div', { class: 'label', style: 'margin:14px 0 6px', text: b.label }));
-        var acts = YP.el('div', { class: 'row', style: 'margin-bottom:8px' });
+      (data.blokken || []).forEach(function (b, bi) {
         var datums = weekendDatums(b.van, b.tot, b.dagen);
-        var mkAct = function (txt, fn) { var x = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: txt }); x.addEventListener('click', function () { fn(datums); paintKalender(); }); return x; };
-        acts.appendChild(mkAct('Alle zaterdagochtenden', function (ds) { ds.forEach(function (d) { if (d.dag === 'za' && !heeftSlot(d.datum, 'ochtend')) slots.push({ datum: d.datum, dagdeel: 'ochtend' }); }); }));
-        acts.appendChild(mkAct('Hele blok', function (ds) { ds.forEach(function (d) { ['ochtend', 'middag'].forEach(function (dd) { if (!heeftSlot(d.datum, dd)) slots.push({ datum: d.datum, dagdeel: dd }); }); }); }));
-        acts.appendChild(mkAct('Blok wissen', function (ds) { var set = {}; ds.forEach(function (d) { set[d.datum] = 1; }); slots = slots.filter(function (s) { return !set[s.datum]; }); }));
-        blokWrap.appendChild(acts);
+        var fold = YP.el('details', { class: 'fold' });
+        if (bi === 0) fold.setAttribute('open', 'open');
+        var offCount = datums.reduce(function (n, d) { return n + (kanNiet(d.datum, 'ochtend') ? 1 : 0) + (kanNiet(d.datum, 'middag') ? 1 : 0); }, 0);
+        var sum = YP.el('summary', { text: b.label });
+        sum.appendChild(YP.el('span', { class: 'fold-count', text: offCount ? offCount + ' dagdeel(en) uit' : 'volledig beschikbaar' }));
+        fold.appendChild(sum);
+        var body = YP.el('div', { class: 'fold-body' });
 
-        var wg = YP.el('div', { class: 'weekgrid' });
+        if (!datums.length) { body.appendChild(YP.el('div', { class: 'hint', text: 'Dit blok heeft nog geen begin- en einddatum.' })); fold.appendChild(body); blokWrap.appendChild(fold); return; }
+
+        // zoek-/filterveld
+        var zoek = YP.el('input', { class: 'input', type: 'search', placeholder: 'Zoek een datum in dit blok', style: 'margin-bottom:10px' });
+
+        var acts = YP.el('div', { class: 'row', style: 'margin-bottom:10px' });
+        var mkAct = function (txt, fn) {
+          var x = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: txt });
+          x.addEventListener('click', function () { fn(datums); paintKalender(); });
+          return x;
+        };
+        acts.appendChild(mkAct('Alle zaterdagen kan ik niet', function (ds) { ds.forEach(function (d) { if (d.dag === 'za') { zetKanNiet(d.datum, 'ochtend', true); zetKanNiet(d.datum, 'middag', true); } }); }));
+        acts.appendChild(mkAct('Alle zondagen kan ik niet', function (ds) { ds.forEach(function (d) { if (d.dag === 'zo') { zetKanNiet(d.datum, 'ochtend', true); zetKanNiet(d.datum, 'middag', true); } }); }));
+        acts.appendChild(mkAct('Blok weer helemaal beschikbaar', function (ds) { var set = {}; ds.forEach(function (d) { set[d.datum] = 1; }); afw = afw.filter(function (s) { return !set[s.datum]; }); }));
+        body.appendChild(zoek);
+        body.appendChild(acts);
+
+        var grid = YP.el('div', { class: 'availgrid' });
         datums.forEach(function (d) {
-          var col = YP.el('div', { class: 'weekcol' }, [YP.el('div', { class: 'wc-day', text: kortDatum(d.datum) })]);
+          var col = YP.el('div', { class: 'availcol', 'data-datum': d.datum });
+          var dagBtn = YP.el('button', { class: 'ac-day', type: 'button', title: 'Hele dag aan of uit', text: kortDatum(d.datum) });
+          dagBtn.style.cssText = 'display:block;width:100%;background:none;border:0;cursor:pointer';
+          dagBtn.addEventListener('click', function () {
+            var allesUit = kanNiet(d.datum, 'ochtend') && kanNiet(d.datum, 'middag');
+            zetKanNiet(d.datum, 'ochtend', !allesUit); zetKanNiet(d.datum, 'middag', !allesUit);
+            paintKalender();
+          });
+          col.appendChild(dagBtn);
           ['ochtend', 'middag'].forEach(function (dd) {
-            var cell = YP.el('label', { class: 'weekcell' }, [
-              YP.el('input', { type: 'checkbox' }),
-              YP.el('span', { text: DDNAAM[dd] })
+            var uit = kanNiet(d.datum, dd);
+            var cell = YP.el('button', { type: 'button', class: 'availcell' + (uit ? ' off' : '') }, [
+              document.createTextNode(DDNAAM[dd]),
+              YP.el('span', { class: 'ac-state', text: uit ? 'Kan niet' : 'Beschikbaar' })
             ]);
-            var inp = cell.querySelector('input');
-            inp.checked = heeftSlot(d.datum, dd);
-            inp.addEventListener('change', function () { toggleSlot(d.datum, dd); });
+            cell.addEventListener('click', function () { zetKanNiet(d.datum, dd, !kanNiet(d.datum, dd)); paintKalender(); });
             col.appendChild(cell);
           });
-          wg.appendChild(col);
+          grid.appendChild(col);
         });
-        if (!datums.length) blokWrap.appendChild(YP.el('div', { class: 'hint', text: 'Dit blok heeft nog geen begin- en einddatum.' }));
-        else blokWrap.appendChild(wg);
+        zoek.addEventListener('input', function () {
+          var q = zoek.value.trim().toLowerCase();
+          Array.prototype.forEach.call(grid.querySelectorAll('.availcol'), function (c) {
+            var txt = (c.querySelector('.ac-day').textContent + ' ' + c.getAttribute('data-datum')).toLowerCase();
+            c.hidden = q && txt.indexOf(q) === -1;
+          });
+        });
+        body.appendChild(grid);
+        fold.appendChild(body);
+        blokWrap.appendChild(fold);
       });
       if (!(data.blokken || []).length) blokWrap.appendChild(YP.el('div', { class: 'empty', text: 'Er zijn nog geen blokken met datums ingesteld.' }));
     }
@@ -155,52 +205,69 @@
     bp2.appendChild(blokWrap);
 
     var mx = YP.el('input', { class: 'input', type: 'number', min: '0', value: r.maxPerWeekend || 0, style: 'width:90px' });
-    bp2.appendChild(YP.el('div', { class: 'field', style: 'margin-top:14px' }, [YP.el('label', { text: 'Max. sessies per weekend' }), mx]));
+    bp2.appendChild(YP.el('div', { class: 'field', style: 'margin-top:14px;margin-bottom:0' }, [YP.el('label', { text: 'Hoeveel sessies wil je maximaal per weekend?' }), mx]));
 
-    var save = YP.el('button', { class: 'btn btn-primary btn-sm' }, ['Beschikbaarheid opslaan']);
+    var save = YP.el('button', { class: 'btn btn-cta' }, ['Beschikbaarheid opslaan']);
     save.addEventListener('click', async function () {
+      save.disabled = true;
       try {
-        await YP.api.put('/api/resource/beschikbaarheid', { beschikbaarheid: slots, maxPerWeekend: +mx.value || 0 });
-        YP.toast('Opgeslagen', 'ok'); load();
-      } catch (e) { YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
+        await YP.api.put('/api/resource/beschikbaarheid', { afwezigheid: afw, maxPerWeekend: +mx.value || 0 });
+        YP.toast('Beschikbaarheid opgeslagen', 'ok'); load();
+      } catch (e) { save.disabled = false; YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
     });
-    bp2.appendChild(save);
+    bp2.appendChild(YP.el('div', { class: 'actionbar' }, [save]));
     bc.appendChild(bp2);
     panel.appendChild(bc);
 
-    // ---- Vakvoorkeuren ----
+    // ---- Voorkeuren ----
     var vc = YP.el('div', { class: 'card' });
-    vc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Welke vakken geef je het liefst?' })]));
+    vc.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Mijn voorkeuren' })]));
     var vp = YP.el('div', { class: 'card-pad' });
-    if (!(data.vakNamen || []).length) vp.appendChild(YP.el('div', { class: 'hint', text: 'Yippie heeft nog geen vakken voor je ingesteld.' }));
+
     var vHost = YP.el('div', { class: 'chipset' });
+    if (!(data.vakNamen || []).length) vp.appendChild(YP.el('div', { class: 'hint', text: 'Yippie heeft nog geen vakken voor je ingesteld.' }));
     (data.vakNamen || []).forEach(function (v) {
       var l = YP.el('label', { class: 'chip-check' }, [YP.el('input', { type: 'checkbox', value: v.id }), YP.el('span', { text: v.naam })]);
       if (voorkeuren.indexOf(v.id) !== -1) l.querySelector('input').checked = true;
       vHost.appendChild(l);
     });
-    vp.appendChild(vHost);
-    if ((data.vakNamen || []).length) {
-      var vSave = YP.el('button', { class: 'btn btn-primary btn-sm', style: 'margin-top:12px' }, ['Voorkeuren opslaan']);
-      vSave.addEventListener('click', async function () {
-        var vv = Array.prototype.map.call(vHost.querySelectorAll('input:checked'), function (i) { return i.value; });
-        try { await YP.api.put('/api/resource/beschikbaarheid', { vakVoorkeuren: vv }); YP.toast('Opgeslagen', 'ok'); load(); }
-        catch (e) { YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
-      });
-      vp.appendChild(vSave);
-    }
+    vp.appendChild(YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Welke vakken geef je het liefst?' }), vHost]));
+
+    var jHost = YP.el('div', { class: 'chipset' });
+    (data.jaarlagen || []).forEach(function (j) {
+      var l = YP.el('label', { class: 'chip-check' }, [YP.el('input', { type: 'checkbox', value: j.id }), YP.el('span', { text: j.label })]);
+      if (vkJaar.indexOf(j.id) !== -1) l.querySelector('input').checked = true;
+      jHost.appendChild(l);
+    });
+    vp.appendChild(YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Welke jaarlagen geef je het liefst?' }), jHost]));
+
+    var vrijIn = YP.el('input', { class: 'input', value: (r.voorkeurVakVrij || ''), maxlength: '80', placeholder: 'Bijv. wiskunde D' });
+    vp.appendChild(YP.el('div', { class: 'field', style: 'margin-bottom:0' }, [YP.el('label', { text: 'Een vak dat je graag zou geven maar er niet bij staat' }), vrijIn]));
+
+    var vSave = YP.el('button', { class: 'btn btn-cta' }, ['Voorkeuren opslaan']);
+    vSave.addEventListener('click', async function () {
+      vSave.disabled = true;
+      var vv = Array.prototype.map.call(vHost.querySelectorAll('input:checked'), function (i) { return i.value; });
+      var jj = Array.prototype.map.call(jHost.querySelectorAll('input:checked'), function (i) { return i.value; });
+      try {
+        await YP.api.put('/api/resource/beschikbaarheid', { vakVoorkeuren: vv, voorkeurJaarlagen: jj, voorkeurVakVrij: vrijIn.value.trim() });
+        YP.toast('Voorkeuren opgeslagen', 'ok'); load();
+      } catch (e) { vSave.disabled = false; YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
+    });
+    vp.appendChild(YP.el('div', { class: 'actionbar' }, [vSave]));
     vc.appendChild(vp);
     panel.appendChild(vc);
   }
 
   function aanwezigheidDialog(s) {
     var dlg = document.createElement('dialog');
-    dlg.style.maxWidth = '480px';
+    dlg.style.maxWidth = '520px';
     dlg.innerHTML = '<div class="dlg"><h3></h3><p class="dsub"></p><div class="db"></div>' +
-      '<div class="dlg-actions"><button type="button" class="btn btn-primary btn-sm" data-close>Klaar</button></div></div>';
+      '<div class="dlg-actions"><button type="button" class="btn btn-primary btn-sm" id="aw-klaar">Klaar</button></div></div>';
     dlg.querySelector('h3').textContent = 'Aanwezigheid - ' + s.vak;
-    dlg.querySelector('.dsub').textContent = kortDatum(s.datum) + ' ' + (DDNAAM[s.dagdeel] || s.dagdeel) + (s.locatie ? ' - ' + s.locatie : '');
+    dlg.querySelector('.dsub').textContent = (s.datum ? kortDatum(s.datum) + ' ' : '') + (DDNAAM[s.dagdeel] || s.dagdeel) + (s.locatie ? ' - ' + s.locatie : '') + (s.jaarlaag ? ' - ' + s.jaarlaag : '');
     var db = dlg.querySelector('.db');
+
     s.leerlingen.forEach(function (l) {
       var seg = YP.el('div', { class: 'seg' });
       ['aanwezig', 'afwezig', 'afgemeld'].forEach(function (st) {
@@ -214,8 +281,23 @@
       });
       db.appendChild(YP.el('div', { style: 'margin-bottom:10px' }, [YP.el('div', { class: 'lr-title', style: 'margin-bottom:4px', text: l.naam }), seg]));
     });
+    if (!s.leerlingen.length) db.appendChild(YP.el('div', { class: 'empty', text: 'Geen leerlingen in deze sessie.' }));
+
+    var notit = YP.el('textarea', { maxlength: '1000', placeholder: 'Kort verslag of bijzonderheden voor Yippie en de school.' });
+    notit.value = s.notitie || '';
+    db.appendChild(YP.el('div', { class: 'field', style: 'margin-top:12px;margin-bottom:0' }, [YP.el('label', { text: 'Notitie bij deze sessie' }), notit]));
+    var nSave = YP.el('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'Notitie opslaan' });
+    var bewaarNotitie = async function () {
+      if ((notit.value || '') === (s.notitie || '')) return;
+      try { await YP.api.post('/api/resource/notitie', { sessieId: s.id, tekst: notit.value.trim() }); s.notitie = notit.value.trim(); YP.toast('Notitie opgeslagen', 'ok'); }
+      catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+    };
+    nSave.addEventListener('click', bewaarNotitie);
+    db.appendChild(YP.el('div', { style: 'margin-top:8px' }, [nSave]));
+
     document.body.appendChild(dlg);
-    dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
+    dlg.querySelector('#aw-klaar').addEventListener('click', async function () { await bewaarNotitie(); dlg.close(); });
+    dlg.addEventListener('cancel', function () { bewaarNotitie(); });
     dlg.addEventListener('close', function () { dlg.remove(); load(); });
     dlg.showModal();
   }
@@ -224,8 +306,9 @@
     await YP.me;
     try {
       data = await YP.api.get('/api/resource/mij');
-      slots = ((data.resource || {}).beschikbaarheid || []).slice();
+      afw = ((data.resource || {}).afwezigheid || []).slice();
       voorkeuren = ((data.resource || {}).vakVoorkeuren || []).slice();
+      vkJaar = ((data.resource || {}).voorkeurJaarlagen || []).slice();
       paint();
     } catch (e) {
       panel.innerHTML = '<div class="card card-pad"><div class="notice bad">Kon je rooster niet laden.</div></div>';
