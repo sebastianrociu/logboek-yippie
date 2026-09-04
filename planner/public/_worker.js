@@ -1525,12 +1525,14 @@ async function seed(env, groot) {
   const { salt, hash } = await hashPassword(env.SEED_ADMIN_PASS || 'beheer1234');
   const m = await hashPassword('mentor1234');
   const b = await hashPassword('begeleider1234');
+  const co = await hashPassword('coordinator1234');
   await mutate(env, KEYS.users, () => ({
     _rev: 0,
     items: [
       { id: 'u_admin', email: cleanEmail(env.SEED_ADMIN_EMAIL) || 'beheer@yippie.test', rol: 'beheerder', naam: 'Beheerder', salt, hash },
       { id: 'u_mentor', email: 'mentor@lyceum.test', rol: 'mentor', naam: 'M. de Wit', schoolId: 'sch_lyceum', salt: m.salt, hash: m.hash },
       { id: 'u_res1', email: 'trainer@yippie.test', rol: 'resource', naam: 'K. Jansen', resourceId: 'res_1', salt: b.salt, hash: b.hash },
+      { id: 'u_coord', email: 'coordinator@yippie.test', rol: 'coordinator', naam: 'C. Surveillant', salt: co.salt, hash: co.hash },
     ],
   }));
 
@@ -1566,7 +1568,8 @@ async function seed(env, groot) {
   });
   const insItems = [
     mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_havo_3', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Sanne de Vries', email: '', tel: '' },
-      keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde'] }] }),
+      keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde'] }],
+      bijzonderheden: 'Allergie: noten. Wordt om 12:45 opgehaald door haar vader.', bijzonderhedenAkkoord: new Date().toISOString() }),
     mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_havo_3', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Tim Post', email: '', tel: '' },
       keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['wiskunde'] }] }),
     mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_havo_3', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Noor Smit', email: '', tel: '' },
@@ -1578,6 +1581,13 @@ async function seed(env, groot) {
       keuzes: [{ blokId: 'blok1', dag: 'zo', dagdeel: 'ochtend', vakken: ['Natuurkunde'] }] }),
     mk({ schoolId: '', schoolVrij: 'Het Nieuwe Lyceum', jaarlaagId: 'jl_vwo_6', niveau: 'vwo', leerjaar: 6, traject: 'examentraining', leerling: { naam: 'Lisa Groen', email: 'lisa@example.test', tel: '' },
       keuzes: [{ blokId: 'blok3', dag: 'za', dagdeel: 'ochtend', vakken: ['nask'] }] }),
+    // Demo voor "Jaarlaag koppelen": niveau/leerjaar bekend, jaarlaagId bewust leeg.
+    mk({ schoolId: 'sch_college', jaarlaagId: '', niveau: 'havo', leerjaar: 4, traject: 'bijspijker', leerling: { naam: 'Bram Kok', email: 'bram@example.test', tel: '' },
+      keuzes: [{ blokId: 'blok2', dag: 'za', dagdeel: 'middag', vakken: ['Engels'] }] }),
+    // Demo voor een verwijderverzoek dat nog afgehandeld moet worden.
+    mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_havo_4', niveau: 'havo', leerjaar: 4, traject: 'bijspijker', leerling: { naam: 'Yara Hendriks', email: 'yara@example.test', tel: '' },
+      keuzes: [{ blokId: 'blok1', dag: 'zo', dagdeel: 'middag', vakken: ['Nederlands'] }],
+      verwijderVerzocht: new Date().toISOString() }),
   ];
   if (groot) insItems.push(...grooteInschrijvingen(mk));
   await mutate(env, KEYS.inschrijvingen, () => ({ _rev: 0, tombstones: {}, items: insItems }));
@@ -1602,7 +1612,15 @@ async function seed(env, groot) {
   }));
   await mutate(env, KEYS.aanwezigheid, () => structuredClone(DEFAULTS.aanwezigheid));
 
-  return { ok: true, seeded: true, logins: { beheerder: config && (cleanEmail(env.SEED_ADMIN_EMAIL) || 'beheer@yippie.test'), mentor: 'mentor@lyceum.test / mentor1234', resource: 'trainer@yippie.test / begeleider1234' } };
+  return {
+    ok: true, seeded: true,
+    logins: {
+      beheerder: (cleanEmail(env.SEED_ADMIN_EMAIL) || 'beheer@yippie.test') + ' / ' + (env.SEED_ADMIN_PASS || 'beheer1234'),
+      mentor: 'mentor@lyceum.test / mentor1234',
+      resource: 'trainer@yippie.test / begeleider1234',
+      coordinator: 'coordinator@yippie.test / coordinator1234',
+    },
+  };
 }
 
 /* ---------- entry ------------------------------------------------------- */

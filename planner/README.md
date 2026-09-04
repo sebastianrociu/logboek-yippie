@@ -36,13 +36,21 @@ Open http://localhost:8788. In dev-modus (`ENV=dev`) staat een seed-route aan:
 curl -XPOST http://localhost:8788/api/dev/seed
 ```
 
-Dat vult voorbeelddata en drie accounts:
+Dat vult voorbeelddata en vier accounts:
 
 | Rol | E-mail | Wachtwoord |
 |---|---|---|
 | Beheerder | `beheer@yippie.test` | `beheer1234` |
 | Mentor (Stedelijk Lyceum) | `mentor@lyceum.test` | `mentor1234` |
 | Begeleider | `trainer@yippie.test` | `begeleider1234` |
+| Coördinator/gangsurveillant | `coordinator@yippie.test` | `coordinator1234` |
+
+Voeg `?groot=1` toe aan de seed-URL voor een grotere set (circa 100
+inschrijvingen, meer begeleiders) om de UI op schaal te bekijken:
+
+```
+curl -XPOST "http://localhost:8788/api/dev/seed?groot=1"
+```
 
 `curl -XPOST http://localhost:8788/api/dev/reset` wist alle keys weer.
 
@@ -65,6 +73,7 @@ public/
   beheer/index.html        Yippie: inschrijvingen, sessies, begeleiders, scholen, accounts
   begeleider/index.html    begeleider: eigen beschikbaarheid + eigen rooster
   school/index.html        school/mentor: alleen-lezen overzicht eigen leerlingen
+  coordinator/index.html   coördinator/gangsurveillant: alleen-lezen planning, alle scholen
   yp-design.css            design-systeem
   vendor/tailwind.css      zelf-gehoste utility-subset
   shared/                  api.js, dialog.js, me-badge.js, cmdk.js, version-check.js
