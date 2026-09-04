@@ -96,9 +96,13 @@
         ]);
         open.addEventListener('click', function () { leerlingDialog(l); });
 
+        var printEen = YP.el('button', { type: 'button', class: 'icon-btn', title: 'Print of bewaar als pdf voor ' + l.leerling, 'aria-label': 'Print ' + l.leerling, html: ico('download', { size: 15 }) });
+        printEen.addEventListener('click', function (e) { e.stopPropagation(); printMet([l.leerling]); });
+
         var row = YP.el('div', { class: 'list-row tight' }, [
           cb, open,
           YP.el('span', { class: 'badge ' + (l.status === 'geannuleerd' ? 'bad' : l.status === 'ingepland' ? 'neutral' : 'warn'), text: l.status }),
+          printEen,
           YP.el('span', { style: 'color:var(--chev);display:flex', html: ico('chevron-right', { size: 16 }) })
         ]);
         body.appendChild(row);
@@ -199,12 +203,11 @@
   function bouwPrintSheet(namenFilter) {
     var host = document.getElementById('printSheet');
     host.innerHTML = '';
-    var boek = '<svg viewBox="0 0 24 24" fill="#E8735A"><path d="M4 4h7v16H5a1 1 0 0 1-1-1V4zm9 0h7v15a1 1 0 0 1-1 1h-6V4z"/></svg>';
     var nu = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
     var set = alle.filter(function (l) { return !namenFilter || namenFilter.indexOf(l.leerling) !== -1; });
     host.appendChild(YP.el('div', { class: 'ps-head' }, [
       YP.el('div', {}, [
-        YP.el('div', { class: 'ps-brand', html: boek + 'Yippie voor de klas' }),
+        YP.el('div', { class: 'ps-brand' }, [YP.el('img', { src: '/assets/icon.svg', alt: '' }), document.createTextNode('Yippie voor de klas')]),
         YP.el('h1', { text: 'Deelnameoverzicht - ' + schoolNaam })
       ]),
       YP.el('div', { class: 'ps-meta', html: nu + '<br>Planning: ' + roosterStatus + '<br>' + set.length + ' leerling(en)' })

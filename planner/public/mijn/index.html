@@ -66,6 +66,19 @@
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-head"><h2>Nog iets doorgeven?</h2></div>
+      <div class="card-pad">
+        <p class="hint" style="margin:0 0 10px">Iets vergeten te melden dat de begeleider tijdens de sessie moet weten?
+          Bijvoorbeeld een allergie, of dat er iemand belt om op te halen. Alleen de toegewezen begeleider en Yippie zien dit.</p>
+        <textarea id="v-bijzonder" maxlength="300" placeholder="Bijvoorbeeld: allergie voor noten, wordt na afloop gebeld."></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn btn-primary btn-sm" id="v-bijzonder-go">Versturen</button>
+          <span class="hint" id="v-bijzonder-msg"></span>
+        </div>
+      </div>
+    </div>
+
     <div class="notice info">
       Gegevens onjuist? Mail <a href="mailto:planning@yippievoordeklas.nl">planning@yippievoordeklas.nl</a>.
       Wil je je helemaal terugtrekken en je gegevens laten verwijderen?
@@ -171,6 +184,8 @@
     if (!(i.keuzes || []).length) kl.appendChild(YP.el('div', { class: 'empty', text: 'Geen blokken gekozen.' }));
     $('v-toel').textContent = i.toelichting ? ('Toelichting: ' + i.toelichting) : '';
     $('v-toel').classList.toggle('hidden', !i.toelichting);
+    $('v-bijzonder').value = i.bijzonderheden || '';
+    $('v-bijzonder-msg').textContent = '';
 
     $('v-rooster-concept').classList.toggle('hidden', data.roosterStatus === 'definitief');
     var list = $('v-sessies'); list.innerHTML = '';
@@ -202,6 +217,16 @@
       load();
     } catch (e) { YP.toast(e.message || 'Afmelden mislukt', 'bad'); }
   }
+
+  $('v-bijzonder-go').addEventListener('click', async function () {
+    var btn = $('v-bijzonder-go'), msg = $('v-bijzonder-msg');
+    btn.disabled = true; msg.textContent = '';
+    try {
+      await YP.api.post('/api/mijn/bijzonderheden?token=' + encodeURIComponent(token), { tekst: $('v-bijzonder').value });
+      msg.textContent = 'Verstuurd, bedankt.'; YP.toast('Verstuurd', 'ok');
+    } catch (e) { msg.textContent = e.message || 'Versturen mislukt.'; }
+    btn.disabled = false;
+  });
 
   document.addEventListener('click', async function (e) {
     if (!e.target.closest || !e.target.closest('#v-verwijder')) return;

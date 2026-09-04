@@ -777,6 +777,7 @@ function mijnPayload(rec, rooster, config) {
       jaarlaag: jaarN[rec.jaarlaagId] || (rec.niveau && rec.leerjaar ? rec.leerjaar + ' ' + rec.niveau : ''),
       traject: rec.traject || '',
       status: rec.status, toelichting: rec.toelichting || '',
+      bijzonderheden: rec.bijzonderheden || '',
       keuzes: (rec.keuzes || []).map((k) => ({
         blok: blokN[k.blokId] || '', dag: k.dag, dagdeel: k.dagdeel, vakken: k.vakken || [],
       })),
@@ -984,6 +985,23 @@ async function handleApi(request, env) {
     });
     stubMail('afmelding');
     return json({ ok: true });
+  }
+
+  // Achteraf iets doorgeven aan Yippie/de begeleider (allergie vergeten te
+  // melden, wordt gebeld, etc.). Overschrijft het bijzonderheden-veld van de
+  // eigen inschrijving; toestemming ligt hier al in het gebruik van de eigen
+  // persoonlijke link, dus geen apart vinkje nodig zoals bij het formulier.
+  if (path === '/api/mijn/bijzonderheden' && method === 'POST') {
+    const tekst = str(body.tekst, 300);
+    const { rec } = await vindOpToken(mijnToken());
+    if (!rec) throw new HttpError(404, 'niet gevonden');
+    await mutate(env, KEYS.inschrijvingen, (d) => {
+      const m = d.items.find((x) => x.id === rec.id);
+      if (m) { m.bijzonderheden = tekst; m.bijzonderhedenAkkoord = tekst ? new Date().toISOString() : ''; }
+      return d;
+    });
+    stubMail('bijzonderheden-bijgewerkt');
+    return json({ ok: true, bijzonderheden: tekst });
   }
 
   if (path === '/api/mijn/verwijderverzoek' && method === 'POST') {
