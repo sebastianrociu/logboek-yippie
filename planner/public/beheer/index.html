@@ -473,12 +473,60 @@
       bp.appendChild(suggWrap);
     }
 
-    // afwezigheid: alleen inzien (de begeleider beheert dit zelf)
-    var afwLbl = (r.afwezigheid || []).length
-      ? (r.afwezigheid || []).slice().sort(function (a, b) { return a.datum < b.datum ? -1 : 1; })
-          .map(function (s) { return kortDatum(s.datum) + ' ' + (DDNAAM[s.dagdeel] || s.dagdeel); }).join(', ')
-      : 'niets doorgegeven; standaard overal beschikbaar';
-    bp.appendChild(YP.el('p', { class: 'hint', style: 'margin:6px 0' }, [YP.el('b', { text: 'Kan niet op: ' }), document.createTextNode(afwLbl)]));
+    // Afwezigheid: standaard alleen inzien (de begeleider beheert dit zelf),
+    // met een ontgrendel-knop voor als het namens de begeleider moet - bijv.
+    // meerdere blokken tegelijk afzeggen na een telefoontje.
+    var afwWrap = YP.el('div', { style: 'margin:6px 0' });
+    var afwLijst = (r.afwezigheid || []).slice().sort(function (a, b) { return a.datum < b.datum ? -1 : 1; });
+    var afwOntgrendeld = false;
+    function tekenAfw() {
+      afwWrap.innerHTML = '';
+      if (!afwOntgrendeld) {
+        var lbl = afwLijst.length
+          ? afwLijst.map(function (s) { return kortDatum(s.datum) + ' ' + (DDNAAM[s.dagdeel] || s.dagdeel); }).join(', ')
+          : 'niets doorgegeven; standaard overal beschikbaar';
+        afwWrap.appendChild(YP.el('p', { class: 'hint', style: 'margin:0' }, [YP.el('b', { text: 'Kan niet op: ' }), document.createTextNode(lbl)]));
+        var unlock = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: 'padding:2px 0;margin-top:2px', html: ico('pencil', { size: 12 }) + ' Aanpassen namens de begeleider' });
+        unlock.addEventListener('click', function () { afwOntgrendeld = true; tekenAfw(); });
+        afwWrap.appendChild(unlock);
+        return;
+      }
+      afwWrap.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 4px', text: 'Let op: dit overschrijft wat de begeleider zelf heeft doorgegeven. De begeleider kan het daarna weer zelf aanpassen.' }));
+      var set = YP.el('div', { class: 'chipset dense', style: 'margin-bottom:6px' });
+      if (!afwLijst.length) set.appendChild(YP.el('span', { class: 'hint', text: 'Niets uitgezet.' }));
+      afwLijst.forEach(function (s, i) {
+        var chip = YP.el('span', { style: 'display:inline-flex;align-items:center;gap:5px;padding:4px 5px 4px 10px;border:1.5px solid #D3D8E0;border-radius:999px;font-size:11.5px;font-weight:700;color:var(--ink-2)' }, [
+          document.createTextNode(kortDatum(s.datum) + ' ' + (DDNAAM[s.dagdeel] || s.dagdeel))
+        ]);
+        var rm = YP.el('button', { type: 'button', 'aria-label': 'Verwijderen', style: 'background:none;border:0;color:var(--chev);cursor:pointer;padding:1px;display:inline-flex', html: ico('close', { size: 12 }) });
+        rm.addEventListener('click', function () { afwLijst.splice(i, 1); tekenAfw(); });
+        chip.appendChild(rm);
+        set.appendChild(chip);
+      });
+      afwWrap.appendChild(set);
+      var dIn = YP.el('input', { class: 'input', type: 'date', style: 'width:150px' });
+      var ddSel = YP.el('select', { class: 'input', style: 'width:110px' }, [YP.el('option', { value: 'ochtend', text: 'Ochtend' }), YP.el('option', { value: 'middag', text: 'Middag' })]);
+      var addBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: 'Datum toevoegen' });
+      addBtn.addEventListener('click', function () {
+        if (!dIn.value) return;
+        if (!afwLijst.some(function (s) { return s.datum === dIn.value && s.dagdeel === ddSel.value; })) afwLijst.push({ datum: dIn.value, dagdeel: ddSel.value });
+        dIn.value = ''; tekenAfw();
+      });
+      var addRow = YP.el('div', { class: 'row', style: 'margin-bottom:6px' }, [dIn, ddSel, addBtn]);
+      afwWrap.appendChild(addRow);
+      var opslaanAfw = YP.el('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'Afwezigheid opslaan' });
+      opslaanAfw.addEventListener('click', function () {
+        saveResources(function (dr) {
+          var m = dr.items.find(function (x) { return x.id === r.id; });
+          if (m) m.afwezigheid = afwLijst.slice();
+        }, { staAfwezigheidToe: true });
+      });
+      var sluit = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: 'Sluiten' });
+      sluit.addEventListener('click', function () { afwOntgrendeld = false; tekenAfw(); });
+      afwWrap.appendChild(YP.el('div', { class: 'row' }, [opslaanAfw, sluit]));
+    }
+    tekenAfw();
+    bp.appendChild(afwWrap);
 
     var save = YP.el('button', { class: 'btn btn-primary btn-sm', 'data-write': '1', text: 'Opslaan' });
     save.addEventListener('click', function () {
