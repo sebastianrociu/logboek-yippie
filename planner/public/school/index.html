@@ -26,10 +26,10 @@
     <p class="dsub">Alleen-lezen. Je ziet uitsluitend leerlingen van je eigen school.</p>
     <ol class="intro-steps">
       <li><b>Per jaarlaag.</b> De leerlingen staan gegroepeerd; zoek op naam met het zoekveld.</li>
-      <li><b>Per leerling.</b> Klik een leerling aan voor de vakken, de blokken en de sessies.</li>
+      <li><b>Per leerling.</b> Klik een leerling aan voor de gevolgde vakken, de sessies, de aanwezigheid en de notities van de begeleider.</li>
       <li><b>Delen.</b> Druk de pagina af of bewaar 'm als pdf voor je dossier.</li>
     </ol>
-    <p class="intro-note">Aanwezigheid per sessie komt in een volgende fase. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <p class="intro-note">Je ziet aanwezigheid en notities zodra de begeleider ze invult en de planning definitief is. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
     <div class="dlg-actions">
       <button type="button" class="btn btn-primary btn-sm" data-close>Aan de slag</button>
     </div>
@@ -67,8 +67,9 @@
       card.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: jr + '  (' + perJaar[jr].length + ')' })]));
       var list = YP.el('div', { class: 'list', style: 'padding:4px 14px 10px' });
       perJaar[jr].sort(function (a, b) { return a.leerling < b.leerling ? -1 : 1; }).forEach(function (l) {
+        var vakLijst = (l.vakkenGevolgd && l.vakkenGevolgd.length) ? l.vakkenGevolgd : l.vakken;
         var sub = [];
-        if (l.vakken.length) sub.push(l.vakken.join(', '));
+        if (vakLijst.length) sub.push(vakLijst.join(', '));
         sub.push(l.ingedeeld ? l.ingedeeld + ' sessie(s)' : 'nog niet ingedeeld');
         if (l.aanwezigheid && l.aanwezigheid.afwezig) sub.push(l.aanwezigheid.afwezig + 'x afwezig');
         var row = YP.el('button', { class: 'list-row', type: 'button', style: 'width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--divider);cursor:pointer' }, [
@@ -96,20 +97,33 @@
     dlg.querySelector('.dsub').textContent = l.jaarlaag + (l.traject ? '  -  ' + (l.traject === 'examentraining' ? 'Examentraining' : 'Bijspijkertraject') : '') + (l.mentor ? '  -  mentor ' + l.mentor : '');
     var db = dlg.querySelector('.db');
 
-    db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:4px', text: 'Vakken en blokken' }));
-    db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 12px', text: (l.vakken.join(', ') || '-') + '  |  ' + ((l.blokken || []).join('; ') || '-') }));
+    var gevolgd = (l.vakkenGevolgd && l.vakkenGevolgd.length) ? l.vakkenGevolgd : [];
+    db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:6px', text: 'Vakken gevolgd' }));
+    if (gevolgd.length) {
+      var chips = YP.el('div', { class: 'chipset', style: 'margin-bottom:8px' });
+      gevolgd.forEach(function (v) { chips.appendChild(YP.el('span', { class: 'chip-check' }, [YP.el('span', { text: v })])); });
+      db.appendChild(chips);
+    } else {
+      db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 8px', text: l.ingedeeld ? '-' : 'Nog geen sessies gevolgd.' }));
+    }
+    db.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 14px', text: 'Ingeschreven voor: ' + (l.vakken.join(', ') || '-') + ((l.blokken || []).length ? '  -  ' + l.blokken.join('; ') : '') }));
 
-    db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:4px', text: 'Sessies' }));
+    db.appendChild(YP.el('p', { class: 'label', style: 'margin-bottom:6px', text: 'Sessies' }));
     if (!l.sessies.length) db.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen sessies. Verschijnt zodra de planning definitief is.' }));
     var lst = YP.el('div', { class: 'list' });
     l.sessies.forEach(function (s) {
-      lst.appendChild(YP.el('div', { class: 'list-row' }, [
-        YP.el('span', { class: 'lr-main' }, [
-          YP.el('span', { class: 'lr-title', text: s.vak + (s.datum ? '  -  ' + kortDatum(s.datum) : '  -  datum volgt') }),
-          YP.el('span', { class: 'lr-sub', text: [DDNAAM[s.dagdeel] || s.dagdeel, s.locatie, s.begeleider].filter(Boolean).join('  -  ') })
-        ]),
-        s.aanwezigheid ? YP.el('span', { class: 'badge ' + (s.aanwezigheid === 'aanwezig' ? 'ok' : s.aanwezigheid === 'afwezig' ? 'bad' : 'warn'), text: AWNAAM[s.aanwezigheid] || s.aanwezigheid }) : null
-      ]));
+      var meta = [DDNAAM[s.dagdeel] || s.dagdeel, s.blok, s.locatie, s.begeleider].filter(Boolean).join('  -  ');
+      var row = YP.el('div', {}, [
+        YP.el('div', { class: 'list-row' }, [
+          YP.el('span', { class: 'lr-main' }, [
+            YP.el('span', { class: 'lr-title', text: s.vak }),
+            YP.el('span', { class: 'lr-sub', text: (s.datum ? kortDatum(s.datum) : 'datum volgt') + (meta ? '  -  ' + meta : '') })
+          ]),
+          s.aanwezigheid ? YP.el('span', { class: 'badge ' + (s.aanwezigheid === 'aanwezig' ? 'ok' : s.aanwezigheid === 'afwezig' ? 'bad' : 'warn'), text: AWNAAM[s.aanwezigheid] || s.aanwezigheid }) : null
+        ])
+      ]);
+      if (s.notitie) row.appendChild(YP.el('p', { class: 'hint', style: 'margin:2px 0 8px 4px', text: 'Notitie begeleider: ' + s.notitie }));
+      lst.appendChild(row);
     });
     db.appendChild(lst);
     if (l.aanwezigheid && (l.aanwezigheid.aanwezig || l.aanwezigheid.afwezig || l.aanwezigheid.afgemeld)) {

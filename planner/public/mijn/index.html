@@ -25,6 +25,17 @@
     <button class="btn btn-primary btn-sm" id="tok-go">Bekijken</button>
   </div>
 
+  <div id="gate" class="card card-pad hidden">
+    <h2>Even checken dat jij het bent</h2>
+    <p class="card-sub">Vul de naam van de leerling in, precies zoals die bij de inschrijving is opgegeven.</p>
+    <div class="field" style="margin-top:12px">
+      <label for="g-naam">Naam van de leerling</label>
+      <input class="input" id="g-naam" autocomplete="off" autocapitalize="words">
+    </div>
+    <p class="err hidden" id="g-err"></p>
+    <button class="btn btn-cta" id="g-go">Mijn indeling bekijken</button>
+  </div>
+
   <div id="loader" class="card card-pad hidden"><div class="empty">Laden...</div></div>
   <div id="err" class="card card-pad hidden"><div class="notice bad" id="err-msg"></div></div>
 
@@ -72,7 +83,7 @@
       <li><b>Je sessies</b> verschijnen zodra Yippie de planning definitief maakt.</li>
       <li><b>Afmelden</b> voor een sessie kan hier; Yippie krijgt daar bericht van.</li>
     </ol>
-    <p class="intro-note">Bewaar de link uit je inschrijvingsbevestiging; dit is de enige toegang tot deze pagina. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <p class="intro-note">De eerste keer vragen we de naam van de leerling ter controle. Bewaar de link uit je inschrijvingsbevestiging; deel 'm niet met anderen. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
     <div class="dlg-actions">
       <button type="button" class="btn btn-primary btn-sm" data-close>Aan de slag</button>
     </div>
@@ -101,10 +112,32 @@
     if (t) location.href = '/mijn/?token=' + encodeURIComponent(t);
   });
 
-  function show(el) { ['ask', 'loader', 'err', 'view'].forEach(function (id) { $(id).classList.toggle('hidden', id !== el); }); }
+  function show(el) { ['ask', 'gate', 'loader', 'err', 'view'].forEach(function (id) { $(id).classList.toggle('hidden', id !== el); }); }
+
+  var okKey = token ? ('yp_mijn_ok_' + token.slice(0, 12)) : '';
+  function isVerified() { try { return localStorage.getItem(okKey) === '1'; } catch (e) { return false; } }
+  function markVerified() { try { localStorage.setItem(okKey, '1'); } catch (e) {} }
+
+  $('g-go').addEventListener('click', async function () {
+    var naam = $('g-naam').value.trim();
+    $('g-err').classList.add('hidden');
+    if (!naam) { $('g-err').textContent = 'Vul de naam in.'; $('g-err').classList.remove('hidden'); return; }
+    var btn = $('g-go'); btn.disabled = true;
+    try {
+      var data = await YP.api.post('/api/mijn/verifieer', { token: token, naam: naam });
+      markVerified();
+      toon(data);
+    } catch (e) {
+      btn.disabled = false;
+      $('g-err').textContent = e.status === 404 ? 'Deze link is niet (meer) geldig.'
+        : (e.status === 403 ? 'De naam komt niet overeen met deze inschrijving.' : (e.message || 'Er ging iets mis.'));
+      $('g-err').classList.remove('hidden');
+    }
+  });
 
   async function load() {
     if (!token) { show('ask'); return; }
+    if (!isVerified()) { show('gate'); setTimeout(function () { $('g-naam').focus(); }, 30); return; }
     show('loader');
     var data;
     try {
@@ -114,6 +147,10 @@
       show('err');
       return;
     }
+    toon(data);
+  }
+
+  function toon(data) {
     var DAGNAAM = { za: 'Zaterdag', zo: 'Zondag' };
     var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag', avond: 'Avond' };
     var i = data.inschrijving;
