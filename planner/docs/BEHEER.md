@@ -7,9 +7,13 @@ blokken, begeleiders of accounts.
 ## Tabbladen
 
 ### Inschrijvingen
-Alle binnengekomen inschrijvingen, **inklapbaar per school** (open/dicht wordt
-onthouden; de kop toont het aantal en hoeveel aandacht nodig hebben) en daarin
-gegroepeerd op jaarlaag. Bovenaan staat een **Aandacht**-strook met de punten die
+Alle binnengekomen inschrijvingen, **inklapbaar per school** - standaard
+ingeklapt; alleen een school (en binnen een school een jaarlaag) met een melding
+staat open. Een vrij ingetypte school koppel je met de knop **"School koppelen"**:
+een popup waarin je een bestaande school kiest of de school met details aanmaakt.
+Per inschrijving is er een knop **"Inloglink"** die een nieuwe persoonlijke
+`/mijn`-link maakt om door te sturen; de status loopt vanzelf mee met het rooster.
+Bovenaan staat een **Aandacht**-strook met de punten die
 eerst moeten: een vrij ingetypte school die nog gekoppeld moet worden, een
 inschrijving zonder gekoppelde jaarlaag, een vak dat niet in de vakkenlijst
 staat, of een leerling die (nog) in geen sessie zit. Per inschrijving zie je het
@@ -21,7 +25,10 @@ vrije school kies je in dezelfde rij "Koppel aan school" (bestaande school of
 `geannuleerd` telt niet meer mee bij het groeperen.
 
 ### Planning
-Het hart van fase 1.
+Het hart van fase 1. Op een breed scherm staan de **knelpunten als vast
+zijpaneel rechts**, zodat je ze ziet terwijl je in het rooster schuift. Filters
+(blok, school, traject, jaarlaag - met "Examenklassen / mavo / havo / vwo") staan
+op één rij boven het rooster.
 
 - **Status en definitief maken.** Zolang het rooster `concept` is, ziet niemand
   buiten Yippie de indeling. "Rooster definitief maken" zet de status om en zet

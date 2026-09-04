@@ -71,7 +71,11 @@ npm run dev        # wrangler pages dev public, met lokale KV-emulatie + ENV=dev
 npm run cron:dev   # cron-worker lokaal, met --test-scheduled
 ```
 
-De dev-run zet ENV=dev en dummy-secrets; `POST /api/dev/seed` vult testdata.
+De dev-run zet ENV=dev en dummy-secrets. `POST /api/dev/reset` wist alles;
+`POST /api/dev/seed` vult een kleine testset (5 leerlingen, 2 begeleiders, een
+training van vandaag). `POST /api/dev/seed?groot=1` vult ~100 leerlingen
+(volledige klassen, 4 scholen, alle niveaus) + 8 extra begeleiders om de UI op
+schaal te bekijken.
 
 ## Tailwind vervangen
 

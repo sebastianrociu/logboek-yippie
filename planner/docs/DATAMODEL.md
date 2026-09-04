@@ -175,6 +175,13 @@ huidige rooster, zonder toe te wijzen. `conflicten` zijn objecten met
 `GET /api/mijn` en `GET /api/school/overzicht` tonen sessies pas als
 `status === "definitief"`.
 
+**Status loopt mee.** Na elke `PUT /api/beheer/rooster` en na `rooster/genereer`
+draait `syncInschrStatus`: een inschrijving in >=1 sessie krijgt status
+`ingepland`, eruit gehaald valt terug op `nieuw` (`geannuleerd`/`afgerond` blijven
+staan). `POST /api/beheer/inschrijvingen/link {id}` roteert de persoonlijke
+`/mijn`-link (nieuwe `tokenHash`, oude token vervalt) zodat beheer 'm kan
+doorsturen.
+
 ## `users`
 
 ```jsonc
