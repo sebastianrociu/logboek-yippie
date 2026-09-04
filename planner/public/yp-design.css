@@ -160,7 +160,8 @@ select{padding-right:36px;appearance:none;font-weight:600;cursor:pointer;backgro
 select option:disabled{color:#9CA3AF}
 .input:focus,select:focus,textarea:focus{outline:none;border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-light)}
 .input:disabled,select:disabled,textarea:disabled{background:#F4F5F7;color:var(--mute);cursor:not-allowed}
-.input:user-invalid{border-color:var(--coral-dark);background:#FDF1EE}
+.input:user-invalid,.veld-fout,.veld-fout:hover{border-color:var(--coral-dark);background:#FDF1EE}
+.veld-fout:focus{box-shadow:0 0 0 3px #F6D6CE}
 textarea{resize:vertical;min-height:84px;line-height:1.55}
 .checkline{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;color:var(--ink-2);padding:5px 0}
 .checkline input{width:17px;height:17px;margin-top:1px;accent-color:var(--coral);flex-shrink:0}
@@ -181,8 +182,9 @@ textarea{resize:vertical;min-height:84px;line-height:1.55}
 .seg input:checked + span{background:var(--coral);color:#fff;box-shadow:var(--sh-btn)}
 .seg input:focus-visible + span{outline:2px solid var(--coral);outline-offset:2px}
 /* Iets grotere variant: prominente keuze (bv. leerjaar op het inschrijfformulier) */
-.seg.seg-lg{gap:5px;padding:4px}
-.seg.seg-lg span{padding:10px 18px;font-size:14px;font-weight:800;min-width:40px;text-align:center}
+/* seg-lg: zelfde hoogte als een gewone .seg (consistentie), alleen elke optie
+   even breed en gecentreerd zodat losse cijfers netjes onder elkaar staan. */
+.seg.seg-lg span{min-width:38px;text-align:center}
 
 /* Horizontale "week": dagen als kolommen, dagdelen als rijen. Radio per cel. */
 .weekgrid{display:grid;grid-auto-flow:column;gap:10px;overflow-x:auto;padding-bottom:4px;max-width:100%}

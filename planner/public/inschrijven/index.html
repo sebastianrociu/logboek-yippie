@@ -81,15 +81,15 @@
         <div class="split2">
           <div class="subcard">
             <h3>Leerling</h3>
-            <div class="field"><label for="f-ln">Naam</label><input class="input" id="f-ln" autocomplete="name" required></div>
-            <div class="field"><label for="f-le">E-mailadres</label><input class="input" type="email" id="f-le" autocomplete="email"></div>
-            <div class="field"><label for="f-lt">Telefoon</label><input class="input" id="f-lt" inputmode="tel" autocomplete="tel"></div>
+            <div class="field"><label for="f-ln">Naam</label><input class="input" id="f-ln" autocomplete="name" autocapitalize="words" required></div>
+            <div class="field"><label for="f-le">E-mailadres</label><input class="input" type="email" id="f-le" autocomplete="email" inputmode="email" placeholder="naam@voorbeeld.nl"></div>
+            <div class="field"><label for="f-lt">Telefoon</label><input class="input" type="tel" id="f-lt" inputmode="tel" autocomplete="tel" pattern="[+0-9][0-9 ()\-]{7,18}" placeholder="06 12345678" title="Bijvoorbeeld 0612345678 of +31 6 12345678"></div>
           </div>
           <div class="subcard">
             <h3>Ouder of verzorger</h3>
-            <div class="field"><label for="f-on">Naam</label><input class="input" id="f-on"></div>
-            <div class="field"><label for="f-oe">E-mailadres</label><input class="input" type="email" id="f-oe"></div>
-            <div class="field"><label for="f-ot">Telefoon</label><input class="input" id="f-ot" inputmode="tel"></div>
+            <div class="field"><label for="f-on">Naam</label><input class="input" id="f-on" autocomplete="name" autocapitalize="words"></div>
+            <div class="field"><label for="f-oe">E-mailadres</label><input class="input" type="email" id="f-oe" inputmode="email" placeholder="naam@voorbeeld.nl"></div>
+            <div class="field"><label for="f-ot">Telefoon</label><input class="input" type="tel" id="f-ot" inputmode="tel" pattern="[+0-9][0-9 ()\-]{7,18}" placeholder="06 12345678" title="Bijvoorbeeld 0612345678 of +31 6 12345678"></div>
           </div>
         </div>
         <p class="hint" style="margin-bottom:14px">Vul minstens een e-mailadres in (leerling of ouder). Op dat adres ontvang je je indeling en later je rooster.</p>
@@ -97,15 +97,28 @@
         <div class="subcard">
           <h3>Mentor of contactpersoon op school</h3>
           <div class="grid cols-2">
-            <div class="field"><label for="f-mn">Naam</label><input class="input" id="f-mn"></div>
-            <div class="field"><label for="f-me">E-mailadres</label><input class="input" type="email" id="f-me"></div>
+            <div class="field"><label for="f-mn">Naam</label><input class="input" id="f-mn" autocapitalize="words"></div>
+            <div class="field"><label for="f-me">E-mailadres</label><input class="input" type="email" id="f-me" inputmode="email" placeholder="mentor@school.nl"></div>
           </div>
           <p class="hint">Zo kan de mentor meekijken met de deelname van deze leerling.</p>
         </div>
 
-        <div class="field" style="margin-top:16px;margin-bottom:0">
-          <label for="f-toelichting">Bijzonderheden voor de planning (niet verplicht)</label>
+        <div class="field" style="margin-top:16px">
+          <label for="f-toelichting">Planningswensen (niet verplicht)</label>
           <textarea id="f-toelichting" maxlength="500" placeholder="Bijvoorbeeld: niet beschikbaar op 20 december, alleen de eerste helft van een blok, of samen ingedeeld willen worden met een klasgenoot."></textarea>
+        </div>
+
+        <div class="subcard" style="margin-top:4px">
+          <h3>Belangrijk voor de begeleider (niet verplicht)</h3>
+          <div class="field" style="margin-bottom:10px">
+            <label for="f-bijzonder">Praktische informatie voor tijdens de sessie</label>
+            <textarea id="f-bijzonder" maxlength="300" placeholder="Bijvoorbeeld: allergie voor noten, wordt na afloop gebeld, mag zelfstandig naar huis."></textarea>
+            <p class="hint">Alleen praktische informatie die de begeleider moet weten. Geen uitgebreide medische dossiers. De mentor en school zien dit niet.</p>
+          </div>
+          <label class="checkline" id="f-bijzonder-akkoord-wrap" hidden>
+            <input type="checkbox" id="f-bijzonder-ok">
+            <span>Ik geef Yippie voor de klas toestemming om deze informatie te delen met de begeleider van de sessie.</span>
+          </label>
         </div>
       </div>
     </div>
@@ -267,15 +280,25 @@
     });
     wkField.appendChild(wk);
     var snel = YP.el('div', { class: 'row', style: 'margin-top:6px' });
+    function syncSnel() {
+      dagen.forEach(function (d) {
+        var slots = Array.prototype.slice.call(wk.querySelectorAll('input[data-role="slot"]')).filter(function (i) { return i.value.indexOf(d + '|') === 0; });
+        var alleAan = slots.length && slots.every(function (i) { return i.checked; });
+        var b = snel.querySelector('[data-dag="' + d + '"]');
+        if (b) { b.classList.toggle('btn-primary', alleAan); b.classList.toggle('btn-ghost', !alleAan); b.setAttribute('aria-pressed', String(alleAan)); }
+      });
+    }
     dagen.forEach(function (d) {
-      var b = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: 'Hele ' + DAGNAAM[d].toLowerCase() });
+      var b = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', 'data-dag': d, 'aria-pressed': 'false', text: 'Hele ' + DAGNAAM[d].toLowerCase() });
       b.addEventListener('click', function () {
-        Array.prototype.forEach.call(wk.querySelectorAll('input[data-role="slot"]'), function (i) {
-          if (i.value.indexOf(d + '|') === 0) i.checked = true;
-        });
+        var slots = Array.prototype.slice.call(wk.querySelectorAll('input[data-role="slot"]')).filter(function (i) { return i.value.indexOf(d + '|') === 0; });
+        var alleAan = slots.length && slots.every(function (i) { return i.checked; });
+        slots.forEach(function (i) { i.checked = !alleAan; }); // averechts: alles aan -> alles uit
+        syncSnel();
       });
       snel.appendChild(b);
     });
+    wk.addEventListener('change', syncSnel);
     wkField.appendChild(snel);
     body.appendChild(wkField);
 
@@ -439,11 +462,47 @@
     initSchoolCombo();
     initNiveau();
     cfg.blokken.forEach(function (b) { $('f-blokken').appendChild(blokCard(b)); });
+    ['f-le', 'f-oe', 'f-me'].forEach(function (id) { bindVeldCheck(id, isEmail, 'Vul een geldig e-mailadres in, bijvoorbeeld naam@voorbeeld.nl.'); });
+    ['f-lt', 'f-ot'].forEach(function (id) { bindVeldCheck(id, isTel, 'Vul een geldig telefoonnummer in, bijvoorbeeld 0612345678.'); });
+    // Toestemmingsvinkje verschijnt zodra er iets in het bijzonderheden-veld staat.
+    var bz = $('f-bijzonder'), bzWrap = $('f-bijzonder-akkoord-wrap');
+    bz.addEventListener('input', function () {
+      var heeft = !!bz.value.trim();
+      bzWrap.hidden = !heeft;
+      if (!heeft) { $('f-bijzonder-ok').checked = false; bz.classList.remove('veld-fout'); }
+    });
     $('loader').classList.add('hidden');
     $('form').classList.remove('hidden');
   }
 
-  function showErr(m) { var e = $('f-err'); e.textContent = m; e.classList.remove('hidden'); e.scrollIntoView({ block: 'center' }); }
+  function showErr(m, focusId) {
+    var e = $('f-err'); e.textContent = m; e.classList.remove('hidden'); e.scrollIntoView({ block: 'center' });
+    if (focusId) { var f = $(focusId); if (f) { f.classList.add('veld-fout'); f.focus(); } }
+  }
+
+  // ---- invulvalidatie: e-mail en telefoon in een vast format -------------
+  function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || '').trim()); }
+  function telSchoon(v) { return String(v || '').replace(/[\s()\-.]/g, ''); }
+  // NL-nummer (0 + 9 cijfers) of internationaal (+landcode, 8-15 cijfers).
+  function isTel(v) { var t = telSchoon(v); return /^0[1-9][0-9]{8}$/.test(t) || /^\+[1-9][0-9]{7,14}$/.test(t); }
+
+  function bindVeldCheck(id, test, tekst) {
+    var el = $(id); if (!el) return;
+    function toets() {
+      var leeg = !el.value.trim();
+      var ok = leeg || test(el.value);
+      el.classList.toggle('veld-fout', !ok);
+      var msg = el.parentNode.querySelector('.veld-hint');
+      if (!ok) {
+        if (!msg) { msg = YP.el('p', { class: 'hint veld-hint', style: 'color:var(--coral-dark);margin-top:4px' }); el.parentNode.appendChild(msg); }
+        msg.textContent = tekst;
+      } else if (msg) { msg.remove(); }
+      return ok;
+    }
+    el.addEventListener('blur', toets);
+    el.addEventListener('input', function () { if (el.classList.contains('veld-fout')) toets(); });
+    return toets;
+  }
 
   $('form').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -460,6 +519,8 @@
       niveau: niv, leerjaar: lj, traject: tr,
       keuzes: blokken,
       toelichting: $('f-toelichting').value,
+      bijzonderheden: $('f-bijzonder').value,
+      bijzonderhedenAkkoord: $('f-bijzonder-ok').checked,
       leerling: { naam: $('f-ln').value, email: $('f-le').value, tel: $('f-lt').value },
       ouder: { naam: $('f-on').value, email: $('f-oe').value, tel: $('f-ot').value },
       mentor: { naam: $('f-mn').value, email: $('f-me').value }
@@ -473,8 +534,19 @@
       if (!k.vakken.length) { showErr('Kies bij elk aangevinkt blok minstens een vak.'); return; }
     }
     blokken.forEach(function (k) { delete k._leeg; });
-    if (!payload.leerling.naam.trim()) { showErr('Vul de naam van de leerling in.'); return; }
-    if (!payload.leerling.email.trim() && !payload.ouder.email.trim()) { showErr('Vul een e-mailadres in (leerling of ouder).'); return; }
+    if (!payload.leerling.naam.trim()) { showErr('Vul de naam van de leerling in.', 'f-ln'); return; }
+    if (!payload.leerling.email.trim() && !payload.ouder.email.trim()) { showErr('Vul een e-mailadres in (leerling of ouder).', 'f-le'); return; }
+    var emailChecks = [['f-le', payload.leerling.email], ['f-oe', payload.ouder.email], ['f-me', payload.mentor.email]];
+    for (var e2 = 0; e2 < emailChecks.length; e2++) {
+      if (emailChecks[e2][1].trim() && !isEmail(emailChecks[e2][1])) { showErr('Controleer het e-mailadres: gebruik het format naam@voorbeeld.nl.', emailChecks[e2][0]); return; }
+    }
+    var telChecks = [['f-lt', payload.leerling.tel], ['f-ot', payload.ouder.tel]];
+    for (var t2 = 0; t2 < telChecks.length; t2++) {
+      if (telChecks[t2][1].trim() && !isTel(telChecks[t2][1])) { showErr('Controleer het telefoonnummer: bijvoorbeeld 0612345678 of +31612345678.', telChecks[t2][0]); return; }
+    }
+    if (payload.bijzonderheden.trim() && !payload.bijzonderhedenAkkoord) {
+      showErr('Zet een vinkje dat Yippie de informatie voor de begeleider mag delen, of maak dat veld leeg.', 'f-bijzonder'); return;
+    }
 
     var btn = $('f-submit'); btn.disabled = true; btn.textContent = 'Versturen...';
     try {

@@ -161,6 +161,8 @@ function normalize(key, o) {
       if (r.niveau == null) r.niveau = '';
       if (r.leerjaar == null) r.leerjaar = null;
       if (!r.traject) r.traject = afgeleidTraject(r.niveau, r.leerjaar);
+      if (r.bijzonderheden == null) r.bijzonderheden = '';
+      if (r.bijzonderhedenAkkoord == null) r.bijzonderhedenAkkoord = '';
       r.keuzes = (r.keuzes || []).map((k) => Object.assign({}, k, { dagdeel: DAGDEEL_OK(k.dagdeel) }));
     }
   } else if (key === 'rooster') {
@@ -409,12 +411,21 @@ function validateInschrijving(body, config) {
   if (!leerlingNaam) fouten.push('Vul de naam van de leerling in.');
   if (!ouderEmail && !leerlingEmail) fouten.push('Vul een e-mailadres in (leerling of ouder).');
 
+  // Bijzonderheden voor de begeleider (kan gezondheidsinfo bevatten): alleen
+  // bewaren als de ouder/leerling er expliciet toestemming voor heeft gegeven.
+  const bijzonderheden = body.bijzonderhedenAkkoord === true ? str(body.bijzonderheden, 300) : '';
+  if (str(body.bijzonderheden, 300) && body.bijzonderhedenAkkoord !== true) {
+    fouten.push('Zet een vinkje dat de informatie voor de begeleider gedeeld mag worden.');
+  }
+
   const clean = {
     schoolId, schoolVrij,
     niveau, leerjaar, traject,
     jaarlaagId: '', // gevuld door de route (find-or-create)
     keuzes: keuzesClean,
     toelichting: str(body.toelichting, 500),
+    bijzonderheden,
+    bijzonderhedenAkkoord: bijzonderheden ? new Date().toISOString() : '',
     leerling: { naam: leerlingNaam, email: leerlingEmail, tel: str(body.leerling && body.leerling.tel, 30) },
     ouder: {
       naam: str(body.ouder && body.ouder.naam, 120), email: ouderEmail, tel: str(body.ouder && body.ouder.tel, 30),
@@ -1202,7 +1213,8 @@ async function handleApi(request, env) {
       const blokN = (config.blokken || []).reduce((m, x) => (m[x.id] = x.label, m), {});
       const vakN = (config.vakken || []).reduce((m, x) => (m[x.id] = x.naam, m), {});
       const jaarN = (config.jaarlagen || []).reduce((m, x) => (m[x.id] = x.label, m), {});
-      const leerlingNaam = (id) => { const r = ins.items.find((x) => x.id === id); return r ? r.leerling.naam : id; };
+      const insById = new Map((ins.items || []).map((x) => [x.id, x]));
+      const leerlingNaam = (id) => { const r = insById.get(id); return r ? r.leerling.naam : id; };
       const sessies = rooster.sessies
         .filter((s) => s.resourceId === rid)
         .sort((a, b) => (a.datum || '9') < (b.datum || '9') ? -1 : 1)
@@ -1214,7 +1226,12 @@ async function handleApi(request, env) {
             blok: blokN[s.blokId] || '', vak: s.vak || '', definitief: rooster.status === 'definitief',
             traject: s.traject || '', jaarlaag: jaarN[s.jaarlaagId] || '',
             notitie: (aanw.notities[s.id] && aanw.notities[s.id].tekst) || '',
-            leerlingen: (s.leerlingIds || []).map((id) => ({ id, naam: leerlingNaam(id), aanwezigheid: (aanw.perSessie[s.id] || {})[id] || '' })),
+            leerlingen: (s.leerlingIds || []).map((id) => ({
+              id, naam: leerlingNaam(id),
+              aanwezigheid: (aanw.perSessie[s.id] || {})[id] || '',
+              // Alleen de toegewezen begeleider van deze sessie ziet dit.
+              bijzonderheden: (insById.get(id) || {}).bijzonderheden || '',
+            })),
           };
         });
       return json({

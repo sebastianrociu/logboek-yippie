@@ -391,10 +391,14 @@
           lab.querySelector('input').addEventListener('change', function () { st[l.id] = v; telUpdate(); });
           seg.appendChild(lab);
         });
-        return YP.el('div', { class: 'list-row tight', 'data-naam': l.naam.toLowerCase() }, [
-          YP.el('span', { class: 'lr-main' }, [YP.el('span', { class: 'lr-title', text: l.naam })]),
-          seg
-        ]);
+        var main = YP.el('span', { class: 'lr-main' }, [YP.el('span', { class: 'lr-title', text: l.naam })]);
+        if (l.bijzonderheden) {
+          main.appendChild(YP.el('span', { class: 'lr-sub', style: 'color:var(--coral-dark);font-weight:600' }, [
+            YP.el('span', { style: 'display:inline-flex;vertical-align:-2px;margin-right:4px', html: ico('alert', { size: 13 }) }),
+            document.createTextNode(l.bijzonderheden)
+          ]));
+        }
+        return YP.el('div', { class: 'list-row tight', 'data-naam': l.naam.toLowerCase() }, [main, seg]);
       }
       s.leerlingen.forEach(function (l) { lijst.appendChild(rij(l)); });
       telUpdate();

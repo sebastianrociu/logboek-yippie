@@ -1,21 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Alleen het Yippie-boekmerk, coral, transparante achtergrond (geen randje). -->
-  <g transform="translate(256 256) scale(1.7)" fill="#E8735A">
+  <!-- Yippie-boekmerk. Transparante achtergrond, ruime en gelijke marge rond de
+       vorm (geen kader, geen randje). Grof genoeg om op 16px leesbaar te blijven. -->
+  <g transform="translate(256 256)" fill="#E8735A">
     <!-- Linker pagina -->
-    <path d="M -120 -78 Q -118 -90 -106 -92 L -18 -98 Q -8 -98 -4 -88 L -4 78 Q -8 86 -18 84 L -106 78 Q -118 76 -120 64 Z"/>
+    <path d="M -150 -96 Q -147 -112 -132 -114 L -24 -122 Q -10 -122 -6 -108 L -6 108 Q -10 122 -24 120 L -132 112 Q -147 110 -150 94 Z"/>
     <!-- Rechter pagina -->
-    <path d="M 120 -78 Q 118 -90 106 -92 L 18 -98 Q 8 -98 4 -88 L 4 78 Q 8 86 18 84 L 106 78 Q 118 76 120 64 Z"/>
+    <path d="M 150 -96 Q 147 -112 132 -114 L 24 -122 Q 10 -122 6 -108 L 6 108 Q 10 122 24 120 L 132 112 Q 147 110 150 94 Z"/>
     <!-- Boekrug -->
-    <rect x="-6" y="-94" width="12" height="180" fill="#C95A43" rx="2"/>
+    <rect x="-8" y="-118" width="16" height="232" rx="3" fill="#C95A43"/>
     <!-- Tekstlijnen links -->
-    <rect x="-100" y="-60" width="80" height="6" rx="3" fill="#FFFFFF"/>
-    <rect x="-100" y="-44" width="60" height="6" rx="3" fill="#FFFFFF"/>
-    <rect x="-100" y="-28" width="70" height="6" rx="3" fill="#FFFFFF"/>
-    <rect x="-100" y="-12" width="50" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="-124" y="-72" width="96" height="9" rx="4.5" fill="#FFFFFF"/>
+    <rect x="-124" y="-44" width="72" height="9" rx="4.5" fill="#FFFFFF"/>
+    <rect x="-124" y="-16" width="88" height="9" rx="4.5" fill="#FFFFFF"/>
     <!-- Tekstlijnen rechts -->
-    <rect x="20" y="-60" width="80" height="6" rx="3" fill="#FFFFFF"/>
-    <rect x="20" y="-44" width="60" height="6" rx="3" fill="#FFFFFF"/>
-    <rect x="20" y="-28" width="70" height="6" rx="3" fill="#FFFFFF"/>
-    <rect x="20" y="-12" width="50" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="28" y="-72" width="96" height="9" rx="4.5" fill="#FFFFFF"/>
+    <rect x="28" y="-44" width="72" height="9" rx="4.5" fill="#FFFFFF"/>
+    <rect x="28" y="-16" width="88" height="9" rx="4.5" fill="#FFFFFF"/>
   </g>
 </svg>
