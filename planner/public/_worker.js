@@ -764,6 +764,23 @@ function mijnPayload(rec, rooster, config) {
     roosterStatus: rooster.status, sessies,
   };
 }
+// Status van inschrijvingen laten meelopen met het rooster: wie in >=1 sessie
+// zit is 'ingepland', wie eruit gehaald is valt terug naar 'nieuw'.
+async function syncInschrStatus(env) {
+  const rooster = await readJSON(env, KEYS.rooster);
+  const inSessie = new Set();
+  for (const s of (rooster.sessies || [])) for (const id of (s.leerlingIds || [])) inSessie.add(id);
+  return mutate(env, KEYS.inschrijvingen, (d) => {
+    let changed = false;
+    for (const r of d.items) {
+      if (r.status === 'geannuleerd' || r.status === 'afgerond') continue;
+      if (inSessie.has(r.id) && r.status !== 'ingepland') { r.status = 'ingepland'; changed = true; }
+      else if (!inSessie.has(r.id) && r.status === 'ingepland') { r.status = 'nieuw'; changed = true; }
+    }
+    return changed ? d : null;
+  });
+}
+
 // Naam-vergelijking voor de lichte identiteitscheck op /mijn.
 function naamGelijk(a, b) {
   const n = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]+/g, '').replace(/\s+/g, ' ').trim();
@@ -976,9 +993,25 @@ async function handleApi(request, env) {
         }));
       }
     }
+    if (sub === 'inschrijvingen/link' && method === 'POST') {
+      // Nieuwe persoonlijke link maken voor een inschrijving (beheer kan 'm doorsturen).
+      const id = str(body.id, 40);
+      const linkToken = uidHex(16);
+      const h = await sha256hex(linkToken);
+      await mutate(env, KEYS.inschrijvingen, (d) => {
+        const m = d.items.find((x) => x.id === id);
+        if (!m) throw new HttpError(404, 'inschrijving niet gevonden');
+        m.tokenHash = h; delete m.token;
+        return d;
+      });
+      return json({ ok: true, token: linkToken });
+    }
     if (sub === 'inschrijvingen') {
       if (method === 'GET') return json(await readJSON(env, KEYS.inschrijvingen));
-      if (method === 'PUT') return json(await putSection(env, KEYS.inschrijvingen, body, ['items']));
+      if (method === 'PUT') {
+        const saved = await putSection(env, KEYS.inschrijvingen, body, ['items']);
+        return json(saved);
+      }
       if (method === 'DELETE') {
         // Definitief wissen (AVG): uit inschrijvingen + cascade uit rooster + aanwezigheid.
         const id = str(url.searchParams.get('id'), 40);
@@ -1011,7 +1044,11 @@ async function handleApi(request, env) {
       if (method === 'GET') return json(await readJSON(env, KEYS.rooster));
       // Volledige vervanging met _rev-check (geen merge-op-id): zo blijft een
       // verwijderde sessie ook echt weg. Bij gelijktijdig schrijven -> 409, retry.
-      if (method === 'PUT') return json(await putSection(env, KEYS.rooster, body, []));
+      if (method === 'PUT') {
+        const saved = await putSection(env, KEYS.rooster, body, []);
+        await syncInschrStatus(env);
+        return json(saved);
+      }
     }
     if (sub === 'aanwezigheid' && method === 'GET') {
       return json(await readJSON(env, KEYS.aanwezigheid));
@@ -1039,14 +1076,7 @@ async function handleApi(request, env) {
         if (d.status === 'definitief') d.status = 'concept';
         return d;
       });
-      // status laten meelopen: wie in een sessie zit -> 'ingepland' (alleen vanuit 'nieuw').
-      const ingedeeld = new Set();
-      for (const s of na.sessies) for (const id of (s.leerlingIds || [])) ingedeeld.add(id);
-      await mutate(env, KEYS.inschrijvingen, (d) => {
-        let veranderd = false;
-        for (const r of d.items) if (r.status === 'nieuw' && ingedeeld.has(r.id)) { r.status = 'ingepland'; veranderd = true; }
-        return veranderd ? d : null;
-      });
+      await syncInschrStatus(env);
       return json({ toegepast: true, roosterStatusVoor: rooster.status, status: na.status, sessies: na.sessies, knelpunten: out.knelpunten, stats: out.stats });
     }
     if (sub === 'rooster/definitief' && method === 'POST') {
@@ -1306,7 +1336,7 @@ async function handleApi(request, env) {
   /* --- DEV --- */
   if (path.startsWith('/api/dev/')) {
     if (!isDev) throw new HttpError(403, 'alleen in dev');
-    if (path === '/api/dev/seed' && method === 'POST') return json(await seed(env));
+    if (path === '/api/dev/seed' && method === 'POST') return json(await seed(env, url.searchParams.get('groot') === '1'));
     if (path === '/api/dev/reset' && method === 'POST') {
       await Promise.all(Object.values(KEYS).map((k) => env.PLANNER_KV.delete(k)));
       // ook de rate-limit-tellers wissen zodat je meteen weer kunt inloggen
@@ -1322,7 +1352,46 @@ async function handleApi(request, env) {
 }
 
 /* ---------- dev seed ---------------------------------------------------- */
-async function seed(env) {
+// Grote testset: volledige klassen om de UI op schaal te bekijken.
+function grooteInschrijvingen(mk) {
+  const VOOR = ['Sanne', 'Tim', 'Noor', 'Daan', 'Lisa', 'Sem', 'Julia', 'Lucas', 'Emma', 'Finn', 'Tess', 'Bram', 'Anne', 'Milan', 'Sara', 'Thijs', 'Fleur', 'Jesse', 'Lotte', 'Ruben', 'Eva', 'Kai', 'Nina', 'Mees', 'Roos', 'Cas', 'Isa', 'Job', 'Yara', 'Lars', 'Femke', 'Guus', 'Maud', 'Stijn', 'Liv', 'Sven', 'Puck', 'Boaz', 'Sofie', 'Teun'];
+  const ACHTER = ['de Vries', 'Jansen', 'van Dijk', 'Bakker', 'Visser', 'Smit', 'Meijer', 'Mulder', 'de Boer', 'Bos', 'Vos', 'Peters', 'Hendriks', 'van Leeuwen', 'Dekker', 'Brouwer', 'de Wit', 'Dijkstra', 'Kok', 'van der Berg'];
+  const SCHOLEN = [
+    { schoolId: 'sch_lyceum', schoolVrij: '' },
+    { schoolId: 'sch_college', schoolVrij: '' },
+    { schoolId: '', schoolVrij: 'Het Nieuwe Lyceum' },
+    { schoolId: '', schoolVrij: 'Christelijk Gymnasium Sorghvliet' },
+  ];
+  const NIV = [
+    { niveau: 'mavo', max: 4, vakken: ['Wiskunde', 'Nederlands', 'Engels', 'Economie', 'Biologie', 'NaSk'] },
+    { niveau: 'havo', max: 5, vakken: ['Wiskunde', 'Natuurkunde', 'Scheikunde', 'Engels', 'Nederlands', 'Economie', 'Biologie'] },
+    { niveau: 'vwo', max: 6, vakken: ['Wiskunde', 'Natuurkunde', 'Scheikunde', 'Engels', 'Nederlands', 'Economie', 'Biologie', 'Wiskunde D'] },
+  ];
+  const DAGEN = ['za', 'zo'], DD = ['ochtend', 'middag'], BLOK = ['blok1', 'blok2', 'blok3'];
+  const out = [];
+  for (let i = 0; i < 100; i++) {
+    const nv = NIV[i % NIV.length];
+    const leerjaar = 3 + (i % (nv.max - 2)); // 3..max
+    const examen = leerjaar >= nv.max;
+    const sc = SCHOLEN[i % SCHOLEN.length];
+    const naam = VOOR[i % VOOR.length] + ' ' + ACHTER[(i * 7) % ACHTER.length];
+    const nVak = 1 + (i % 2);
+    const vakken = [];
+    for (let v = 0; v < nVak; v++) vakken.push(nv.vakken[(i + v * 3) % nv.vakken.length]);
+    const blk = BLOK[i % (examen ? 3 : 2)];
+    out.push(mk({
+      schoolId: sc.schoolId, schoolVrij: sc.schoolVrij,
+      niveau: nv.niveau, leerjaar,
+      jaarlaagId: 'jl_' + nv.niveau + '_' + leerjaar,
+      traject: examen ? 'examentraining' : 'bijspijker',
+      leerling: { naam, email: (i % 3 === 0 ? naam.toLowerCase().replace(/[^a-z]+/g, '.') + '@voorbeeld.test' : ''), tel: '' },
+      keuzes: [{ blokId: blk, dag: DAGEN[i % 2], dagdeel: DD[(i >> 1) % 2], vakken }],
+    }));
+  }
+  return out;
+}
+
+async function seed(env, groot) {
   const config = {
     _rev: 0,
     scholen: [{ id: 'sch_lyceum', naam: 'Stedelijk Lyceum' }, { id: 'sch_college', naam: 'Noorderpoort College' }],
@@ -1359,16 +1428,29 @@ async function seed(env) {
     ],
   }));
 
-  await mutate(env, KEYS.resources, () => ({
-    _rev: 0, tombstones: {},
-    items: [
-      { id: 'res_1', naam: 'K. Jansen', email: 'trainer@yippie.test', vakIds: ['vak_wi', 'vak_na'], jaarlaagIds: ['jl_havo_3', 'jl_havo_4', 'jl_vwo_4'],
-        vakVoorkeuren: ['vak_wi'], voorkeurJaarlagen: ['jl_vwo_4'], voorkeurVakVrij: 'Wiskunde D', voorkeurVakkenVrij: ['Wiskunde D'], maxPerWeekend: 3,
-        afwezigheid: [{ datum: '2026-11-14', dagdeel: 'ochtend' }] },
-      { id: 'res_2', naam: 'L. Bakker', email: 'lbakker@yippie.test', vakIds: ['vak_en', 'vak_ne'], jaarlaagIds: ['jl_havo_3', 'jl_mavo_4', 'jl_havo_5'],
-        vakVoorkeuren: [], voorkeurJaarlagen: [], voorkeurVakVrij: '', voorkeurVakkenVrij: [], maxPerWeekend: 2, afwezigheid: [] },
-    ],
-  }));
+  const resItems = [
+    { id: 'res_1', naam: 'K. Jansen', email: 'trainer@yippie.test', vakIds: ['vak_wi', 'vak_na'], jaarlaagIds: ['jl_havo_3', 'jl_havo_4', 'jl_vwo_4'],
+      vakVoorkeuren: ['vak_wi'], voorkeurJaarlagen: ['jl_vwo_4'], voorkeurVakVrij: 'Wiskunde D', voorkeurVakkenVrij: ['Wiskunde D'], maxPerWeekend: 3,
+      afwezigheid: [{ datum: '2026-11-14', dagdeel: 'ochtend' }] },
+    { id: 'res_2', naam: 'L. Bakker', email: 'lbakker@yippie.test', vakIds: ['vak_en', 'vak_ne'], jaarlaagIds: ['jl_havo_3', 'jl_mavo_4', 'jl_havo_5'],
+      vakVoorkeuren: [], voorkeurJaarlagen: [], voorkeurVakVrij: '', voorkeurVakkenVrij: [], maxPerWeekend: 2, afwezigheid: [] },
+  ];
+  if (groot) {
+    const namen = ['P. de Groot', 'R. El Amrani', 'S. Willemsen', 'M. van Loon', 'T. Kuipers', 'A. Bergsma', 'N. Overmars', 'D. Schouten'];
+    const alleVak = ['vak_wi', 'vak_na', 'vak_sk', 'vak_en', 'vak_ne', 'vak_bio', 'vak_ec'];
+    const alleJl = [];
+    for (const nv of NIVEAUS) for (let lj = 2; lj <= LEERJAAR_MAX[nv]; lj++) alleJl.push('jl_' + nv + '_' + lj);
+    namen.forEach((naam, i) => {
+      resItems.push({
+        id: 'res_g' + (i + 1), naam, email: 'trainer' + (i + 3) + '@yippie.test',
+        vakIds: [alleVak[i % alleVak.length], alleVak[(i + 3) % alleVak.length]],
+        jaarlaagIds: alleJl.filter((_, k) => (k + i) % 3 === 0),
+        vakVoorkeuren: [], voorkeurJaarlagen: [], voorkeurVakVrij: '', voorkeurVakkenVrij: [],
+        maxPerWeekend: 2 + (i % 3), afwezigheid: [],
+      });
+    });
+  }
+  await mutate(env, KEYS.resources, () => ({ _rev: 0, tombstones: {}, items: resItems }));
 
   const mk = (over) => ({
     id: uid(), token: uid(24), ts: new Date().toISOString(), status: 'nieuw',
@@ -1391,6 +1473,7 @@ async function seed(env) {
     mk({ schoolId: '', schoolVrij: 'Het Nieuwe Lyceum', jaarlaagId: 'jl_vwo_6', niveau: 'vwo', leerjaar: 6, traject: 'examentraining', leerling: { naam: 'Lisa Groen', email: 'lisa@example.test', tel: '' },
       keuzes: [{ blokId: 'blok3', dag: 'za', dagdeel: 'ochtend', vakken: ['nask'] }] }),
   ];
+  if (groot) insItems.push(...grooteInschrijvingen(mk));
   await mutate(env, KEYS.inschrijvingen, () => ({ _rev: 0, tombstones: {}, items: insItems }));
 
   // Een testtraining van vandaag, zodat de trainer de aanwezigheids- en
