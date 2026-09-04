@@ -8,7 +8,8 @@
     { label: 'Beheer', hint: 'Yippie', run: function () { location.href = '/beheer/'; } },
     { label: 'Mijn indeling', hint: 'Leerling of ouder', run: function () { location.href = '/mijn/'; } },
     { label: 'Mijn rooster', hint: 'Begeleider', run: function () { location.href = '/begeleider/'; } },
-    { label: 'Schooloverzicht', hint: 'Mentor', run: function () { location.href = '/school/'; } }
+    { label: 'Schooloverzicht', hint: 'Mentor', run: function () { location.href = '/school/'; } },
+    { label: 'Planningsoverzicht', hint: 'Coördinator', run: function () { location.href = '/coordinator/'; } }
   ];
   var extra = [];
 

@@ -70,6 +70,11 @@ zijn bijzondere persoonsgegevens (AVG art. 9).
   alleen uit de sessiecookie).
 - **Begeleider:** de eigen beschikbaarheid, het eigen rooster en de aanwezigheid
   van de eigen sessies.
+- **Coördinator/gangsurveillant:** de volledige planning over alle scholen,
+  alleen-lezen, met alleen een telling aanwezig/afwezig/afgemeld per sessie -
+  geen leerlingnamen, geen notities, geen bijzonderheden. Een rol die over
+  meerdere scholen/sessies kijkt krijgt zo niet meer te zien dan nodig is om te
+  weten waar en wanneer iets speelt.
 - **Beheerder (Yippie):** alles. Beperk het aantal beheerders.
 
 De sessiecookie is HMAC-ondertekend, `HttpOnly`, `SameSite=Lax`, 12 uur geldig,

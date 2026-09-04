@@ -91,6 +91,11 @@ Inlogaccounts voor mentoren/scholen en begeleiders (en extra beheerders).
   te maken.
 - Rol **Mentor/school**: koppel aan één school. Die persoon ziet uitsluitend de
   leerlingen van die school, alleen-lezen.
+- Rol **Coördinator/gangsurveillant**: geen koppeling nodig. Ziet de volledige
+  planning over alle scholen heen, alleen-lezen, inclusief een telling van
+  aanwezig/afwezig/afgemeld per sessie. Bewust **geen leerlingnamen, notities of
+  bijzonderheden** (need-to-know); wil een school dat toch, bespreek dat eerst
+  met de school als verwerkingsverantwoordelijke.
 - **Wachtwoord is optioneel.** Laat je het leeg, dan logt de persoon in via de
   **persoonlijke inloglink** (30 dagen geldig; knop "Inloglink" per account, of
   het venster dat na aanmaken opent). Vul je wel een wachtwoord in, dan kan dat
@@ -103,6 +108,7 @@ Inlogaccounts voor mentoren/scholen en begeleiders (en extra beheerders).
 | Beheerder (Yippie) | Alles hierboven. |
 | Begeleider | `/begeleider/`: afwezigheid en voorkeuren doorgeven, eigen rooster inzien, op de dag aanwezigheid + notitie per sessie. |
 | School/mentor | `/school/`: alleen-lezen overzicht van de eigen leerlingen - gevolgde vakken, sessies, aanwezigheid en de notities van de begeleider. |
+| Coördinator/gangsurveillant | `/coordinator/`: alleen-lezen planning + aanwezigheidstelling over alle scholen, zonder leerlingnamen. |
 | Leerling/ouder | `/mijn/?token=...`: eigen indeling en rooster inzien en zich afmelden voor een sessie. Geen account; eerste keer wordt de naam ter controle gevraagd. |
 
 De scheiding wordt **server-side** afgedwongen: een mentor-request krijgt nooit

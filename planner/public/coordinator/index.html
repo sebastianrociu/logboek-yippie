@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Planningsoverzicht - Yippie voor de klas</title>
+<meta name="theme-color" content="#E8735A">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+<link rel="stylesheet" href="/vendor/tailwind.css">
+<link rel="stylesheet" href="/yp-design.css">
+</head>
+<body>
+<header id="yp-topbar" data-title="Planningsoverzicht" data-sub="Coördinator" data-auth="coordinator"></header>
+
+<div class="ro-banner">Alleen-lezen. Je ziet de volledige planning en aanwezigheid, zonder leerlingnamen of notities.</div>
+
+<main class="wrap">
+  <div id="panel"><div class="card card-pad"><div class="empty">Laden...</div></div></div>
+</main>
+
+<dialog id="introDialog" aria-labelledby="introTitle">
+  <div class="dlg">
+    <h3 id="introTitle">Het planningsoverzicht</h3>
+    <p class="dsub">Alleen-lezen, over alle scholen heen.</p>
+    <ol class="intro-steps">
+      <li><b>Per dag.</b> Alle sessies staan gegroepeerd op datum; zoek op school, vak of begeleider.</li>
+      <li><b>Aanwezigheid.</b> Per sessie zie je hoeveel leerlingen aanwezig, afwezig of afgemeld zijn - geen namen, geen notities.</li>
+      <li><b>Status.</b> Boven elke sessie staat of de planning nog concept is of al definitief.</li>
+    </ol>
+    <p class="intro-note">Namen en notities van leerlingen zijn hier bewust niet zichtbaar (need-to-know). Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-close>Aan de slag</button>
+    </div>
+  </div>
+</dialog>
+
+<script src="/shared/api.js"></script>
+<script src="/shared/icons.js"></script>
+<script src="/shared/dialog.js"></script>
+<script src="/shared/me-badge.js"></script>
+<script src="/shared/version-check.js"></script>
+<script>
+(function () {
+  document.documentElement.classList.add('readonly');
+  var panel = document.getElementById('panel');
+  var alle = [], roosterStatus = '';
+  var DDNAAM = { ochtend: 'Ochtend', middag: 'Middag' };
+  var AWNAAM = { aanwezig: 'aanwezig', afwezig: 'afwezig', afgemeld: 'afgemeld', onbekend: 'nog niet ingevuld' };
+  function kortDatum(iso) { var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso; return new Date(t).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }); }
+
+  function render(zoek, alleenKomend) {
+    var listHost = document.getElementById('c-list');
+    listHost.innerHTML = '';
+    var vandaag = new Date().toISOString().slice(0, 10);
+    var lijst = alle.filter(function (s) {
+      if (alleenKomend && s.datum && s.datum < vandaag) return false;
+      if (!zoek) return true;
+      var q = zoek.toLowerCase();
+      return [s.school, s.vak, s.begeleider, s.jaarlaag, s.blok].join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+    if (!lijst.length) { listHost.appendChild(YP.el('div', { class: 'card card-pad' }, [YP.el('div', { class: 'empty', text: 'Niets gevonden.' })])); return; }
+
+    var perDag = {};
+    lijst.forEach(function (s) { var k = s.datum || '(datum volgt)'; (perDag[k] = perDag[k] || []).push(s); });
+    Object.keys(perDag).sort().forEach(function (dag, i) {
+      var fold = YP.el('details', { class: 'fold' });
+      if (i === 0) fold.setAttribute('open', 'open');
+      var sum = YP.el('summary', { text: dag === '(datum volgt)' ? dag : kortDatum(dag) });
+      sum.appendChild(YP.el('span', { class: 'fold-count', text: perDag[dag].length + ' sessie(s)' }));
+      fold.appendChild(sum);
+      var body = YP.el('div', { class: 'fold-body tight' });
+      perDag[dag].sort(function (a, b) { return (a.van || '9') < (b.van || '9') ? -1 : 1; }).forEach(function (s) {
+        var telBits = [];
+        if (s.aanwezigheid.aanwezig) telBits.push(YP.el('span', { class: 'badge ok', text: s.aanwezigheid.aanwezig + ' aanwezig' }));
+        if (s.aanwezigheid.afwezig) telBits.push(YP.el('span', { class: 'badge bad', text: s.aanwezigheid.afwezig + ' afwezig' }));
+        if (s.aanwezigheid.afgemeld) telBits.push(YP.el('span', { class: 'badge warn', text: s.aanwezigheid.afgemeld + ' afgemeld' }));
+        var row = YP.el('div', { class: 'list-row tight' }, [
+          YP.el('span', { class: 'lr-main' }, [
+            YP.el('span', { class: 'lr-title', text: (s.van || '') + '-' + (s.tot || '') + '  -  ' + s.vak + (s.jaarlaag ? '  -  ' + s.jaarlaag : '') }),
+            YP.el('span', { class: 'lr-sub', text: [s.school, s.begeleider, s.locatie, s.aantal + ' leerling(en)'].filter(Boolean).join('  -  ') })
+          ]),
+          YP.el('div', { class: 'row', style: 'gap:6px;flex-wrap:wrap;justify-content:flex-end' }, telBits.length ? telBits : [YP.el('span', { class: 'hint', text: 'nog geen aanwezigheid' })])
+        ]);
+        body.appendChild(row);
+      });
+      fold.appendChild(body);
+      listHost.appendChild(fold);
+    });
+  }
+
+  async function load() {
+    await YP.me;
+    var d;
+    try { d = await YP.api.get('/api/coordinator/overzicht'); }
+    catch (e) { panel.innerHTML = '<div class="card card-pad"><div class="notice bad">Kon het overzicht niet laden.</div></div>'; return; }
+    alle = d.sessies || []; roosterStatus = d.roosterStatus;
+    panel.innerHTML = '';
+
+    var kop = YP.el('div', { class: 'card card-pad tight', style: 'margin-bottom:14px' });
+    kop.appendChild(YP.el('div', { class: 'spread' }, [
+      YP.el('div', {}, [
+        YP.el('h2', { text: 'Planning' }),
+        YP.el('p', { class: 'card-sub', text: alle.length + ' sessie(s) in totaal.' })
+      ]),
+      YP.el('span', { class: 'badge ' + (roosterStatus === 'definitief' ? 'ok' : 'neutral'), text: roosterStatus === 'definitief' ? 'definitief' : 'nog concept' })
+    ]));
+    var zoek = YP.el('input', { class: 'input', type: 'search', placeholder: 'Zoek op school, vak, begeleider of jaarlaag', style: 'margin-top:12px' });
+    var komendLbl = YP.el('label', { class: 'checkline', style: 'margin-top:8px' }, [YP.el('input', { type: 'checkbox' }), YP.el('span', { text: 'Alleen vandaag en later' })]);
+    var komend = komendLbl.querySelector('input'); komend.checked = true;
+    zoek.addEventListener('input', function () { render(zoek.value.trim(), komend.checked); });
+    komend.addEventListener('change', function () { render(zoek.value.trim(), komend.checked); });
+    kop.appendChild(zoek); kop.appendChild(komendLbl);
+    panel.appendChild(kop);
+    panel.appendChild(YP.el('div', { id: 'c-list' }));
+    render('', true);
+  }
+  load();
+})();
+</script>
+</body>
+</html>

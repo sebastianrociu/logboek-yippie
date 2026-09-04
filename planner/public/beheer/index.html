@@ -1394,7 +1394,7 @@
     var email = YP.el('input', { class: 'input', type: 'email', placeholder: 'E-mail' });
     var pass = YP.el('input', { class: 'input', type: 'text', placeholder: 'Leeg = alleen een inloglink' });
     var rol = YP.el('select', {});
-    rol.innerHTML = '<option value="resource">Begeleider</option><option value="mentor">Mentor / school</option><option value="beheerder">Beheerder</option>';
+    rol.innerHTML = '<option value="resource">Begeleider</option><option value="mentor">Mentor / school</option><option value="coordinator">Coördinator / gangsurveillant</option><option value="beheerder">Beheerder</option>';
     var schoolSel = YP.el('select', {});
     schoolSel.appendChild(YP.el('option', { value: '', text: 'Kies school' }));
     c.scholen.forEach(function (s) { schoolSel.appendChild(YP.el('option', { value: s.id, text: s.naam })); });

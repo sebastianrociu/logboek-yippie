@@ -1165,7 +1165,7 @@ async function handleApi(request, env) {
       }
       if (method === 'POST') {
         const email = cleanEmail(body.email);
-        const rol = ['beheerder', 'resource', 'mentor'].includes(body.rol) ? body.rol : null;
+        const rol = ['beheerder', 'resource', 'mentor', 'coordinator'].includes(body.rol) ? body.rol : null;
         const wachtwoord = String(body.wachtwoord || '');
         const naam = str(body.naam, 120) || email;
         if (!email || !rol) throw new HttpError(400, 'e-mail en rol verplicht');
@@ -1400,6 +1400,43 @@ async function handleApi(request, env) {
       return json({ school: schoolNaam, roosterStatus: rooster.status, leerlingen });
     }
     throw new HttpError(404, 'onbekende school-route');
+  }
+
+  /* --- COORDINATOR / GANGSURVEILLANT (rol coordinator, alleen-lezen) -------
+     Ziet de volledige planning (alle scholen) en de aanwezigheid als telling.
+     Bewust GEEN leerlingnamen, notities of bijzonderheden: need-to-know voor
+     iemand die over meerdere scholen/sessies toezicht houdt, geen begeleider
+     of mentor is. Wil een school toch namen tonen, dan is dat een aparte,
+     bewuste vervolgkeuze (en dan het liefst weer school-gescoped zoals mentor). */
+  if (path.startsWith('/api/coordinator/')) {
+    requireRole(await getAuth(env, request), 'coordinator');
+    const sub = path.slice('/api/coordinator/'.length);
+    if (sub === 'overzicht' && method === 'GET') {
+      const [config, rooster, aanw] = await Promise.all([
+        readJSON(env, KEYS.config), readJSON(env, KEYS.rooster), readJSON(env, KEYS.aanwezigheid),
+      ]);
+      const schoolN = (config.scholen || []).reduce((m, x) => (m[x.id] = x.naam, m), {});
+      const jaarN = (config.jaarlagen || []).reduce((m, x) => (m[x.id] = x.label, m), {});
+      const blokN = (config.blokken || []).reduce((m, x) => (m[x.id] = x.label, m), {});
+      const sessies = (rooster.sessies || []).slice()
+        .sort((a, b) => (a.datum || '9') < (b.datum || '9') ? -1 : 1)
+        .map((s) => {
+          const tt = tijdVoor(config, s.dagdeel);
+          const telling = { aanwezig: 0, afwezig: 0, afgemeld: 0, onbekend: 0 };
+          for (const id of (s.leerlingIds || [])) {
+            const st = (aanw.perSessie[s.id] || {})[id];
+            telling[st && telling[st] != null ? st : 'onbekend']++;
+          }
+          return {
+            id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, van: tt.van, tot: tt.tot,
+            locatie: s.locatie || '', vak: s.vak || '', begeleider: s.begeleiderNaam || '',
+            school: schoolN[s.schoolId] || s.schoolId || '(school onbekend)', blok: blokN[s.blokId] || '',
+            jaarlaag: jaarN[s.jaarlaagId] || '', aantal: (s.leerlingIds || []).length, aanwezigheid: telling,
+          };
+        });
+      return json({ roosterStatus: rooster.status, sessies });
+    }
+    throw new HttpError(404, 'onbekende coordinator-route');
   }
 
   /* --- DEV --- */

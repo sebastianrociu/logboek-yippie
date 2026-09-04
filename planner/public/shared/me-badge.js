@@ -9,7 +9,7 @@
   // filter:brightness(0) invert(1) op zodat het wit wordt op de coral header.
   var LOGO = '/assets/logo.png';
 
-  var ROLNAAM = { beheerder: 'Beheerder', resource: 'Begeleider', mentor: 'Mentor', ouder: 'Leerling of ouder' };
+  var ROLNAAM = { beheerder: 'Beheerder', resource: 'Begeleider', mentor: 'Mentor', coordinator: 'Coördinator', ouder: 'Leerling of ouder' };
 
   function initials(naam) {
     var p = String(naam || '').trim().split(/\s+/).filter(Boolean);

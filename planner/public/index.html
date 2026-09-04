@@ -36,6 +36,7 @@
       <div class="row" style="margin-top:14px">
         <button class="btn btn-ghost" data-login="resource">Begeleider</button>
         <button class="btn btn-ghost" data-login="mentor">School of mentor</button>
+        <button class="btn btn-ghost" data-login="coordinator">Coördinator</button>
         <button class="btn btn-ghost" data-login="beheerder">Beheer</button>
       </div>
       <p class="hint">Een persoonlijke inloglink gekregen? Open die; het inloggen gaat dan vanzelf.</p>
@@ -89,7 +90,7 @@
 (function () {
   var params = new URLSearchParams(location.search);
   var next = params.get('next') || '';
-  var ROUTE = { beheerder: '/beheer/', resource: '/begeleider/', mentor: '/school/' };
+  var ROUTE = { beheerder: '/beheer/', resource: '/begeleider/', mentor: '/school/', coordinator: '/coordinator/' };
 
   // Persoonlijke inloglink: /?login=<token>
   var loginTok = params.get('login');
@@ -128,7 +129,8 @@
   var SUB = {
     beheerder: 'Beheer: scholen, vakken, begeleiders, roosteren en rapportage.',
     resource: 'Begeleider: je eigen beschikbaarheid en je eigen rooster.',
-    mentor: 'School of mentor: het overzicht van je eigen leerlingen.'
+    mentor: 'School of mentor: het overzicht van je eigen leerlingen.',
+    coordinator: 'Coördinator: de volledige planning en aanwezigheid, alleen-lezen.'
   };
   var dlg = document.getElementById('loginDialog');
   var form = document.getElementById('loginForm');
