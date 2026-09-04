@@ -295,7 +295,9 @@
     panel.innerHTML = '';
     var wrap = YP.el('div', { class: 'stack' });
     var c = state.config;
-    var row2 = YP.el('div', { class: 'grid cols-2 tight' });
+    // Op een breed scherm staan Scholen, Vakken en Jaarlagen naast elkaar (3
+    // kolommen); ze horen bij elkaar en gebruikers scrollen anders onnodig veel.
+    var row2 = YP.el('div', { class: 'grid cols-3 tight' });
     wrap.appendChild(row2);
     simpleEditor(row2, {
       titel: 'Scholen', items: c.scholen, velden: [{ k: 'naam', ph: 'Naam van de school' }],
@@ -311,7 +313,7 @@
       onAdd: function (o) { saveConfig(function (d) { d.vakken.push({ id: slug(o.naam), naam: o.naam }); }); },
       onDel: function (x) { saveConfig(function (d) { d.vakken = d.vakken.filter(function (s) { return s.id !== x.id; }); }); }
     });
-    simpleEditor(wrap, {
+    simpleEditor(row2, {
       titel: 'Jaarlagen', items: c.jaarlagen, velden: [{ k: 'label', ph: 'Bijv. 5 havo' }],
       help: 'Vult zichzelf aan uit inschrijvingen (niveau + leerjaar). Hier kun je er met de hand bij zetten.',
       toLabel: function (x) { return x.label; },
@@ -428,9 +430,48 @@
       YP.el('div', { class: 'lk-head', html: ico('lock', { size: 12 }) + ' Voorkeuren (begeleider beheert zelf)' }),
       YP.el('p', { class: 'hint', style: 'margin:0', text:
         'Liefst: ' + (vvNamen.join(', ') || '-') +
-        '  |  Jaarlagen: ' + (vkjNamen.join(', ') || '-') +
-        '  |  Wil ook: ' + (wilNamen.join(', ') || '-') })
+        '  |  Jaarlagen: ' + (vkjNamen.join(', ') || '-') })
     ]));
+
+    // Suggesties: vakken/jaarlagen die de begeleider zelf graag zou geven maar
+    // nog niet aan het profiel hangen. Coral chip, geen jaarlaag-look-alike, met
+    // een directe "+ toevoegen" actie.
+    var missendeJaar = (r.voorkeurJaarlagen || []).filter(function (id) { return (r.jaarlaagIds || []).indexOf(id) === -1; });
+    var extraVakken = wilNamen.filter(function (n) { return !(c.vakken || []).some(function (v) { return vakKey(v.naam) === vakKey(n) && (r.vakIds || []).indexOf(v.id) !== -1; }); });
+    if (missendeJaar.length || extraVakken.length) {
+      var suggWrap = YP.el('div', { style: 'margin:2px 0 6px' });
+      suggWrap.appendChild(YP.el('div', { class: 'hint', style: 'margin:0 0 4px;font-weight:700;color:var(--coral-dark)', text: 'Suggestie van de begeleider' }));
+      var suggSet = YP.el('div', { class: 'chipset dense' });
+      missendeJaar.forEach(function (id) {
+        var chip = YP.el('span', { class: 'chip-sugg' }, [
+          YP.el('span', { class: 'plus', html: ico('plus', { size: 11 }) }),
+          document.createTextNode(labelOf(c.jaarlagen, id, 'label') + ' toevoegen')
+        ]);
+        chip.addEventListener('click', function () {
+          saveResources(function (d) { var m = d.items.find(function (x) { return x.id === r.id; }); if (m) m.jaarlaagIds = (m.jaarlaagIds || []).concat([id]); });
+        });
+        suggSet.appendChild(chip);
+      });
+      extraVakken.forEach(function (naam) {
+        var bestaand = (c.vakken || []).find(function (v) { return vakKey(v.naam) === vakKey(naam); });
+        var chip = YP.el('span', { class: 'chip-sugg' }, [
+          YP.el('span', { class: 'plus', html: ico('plus', { size: 11 }) }),
+          document.createTextNode(naam + ' toevoegen')
+        ]);
+        chip.addEventListener('click', async function () {
+          try {
+            var vakId = bestaand ? bestaand.id : null;
+            if (!vakId) {
+              state.config = await YP.api.save('/api/beheer/config', function (d) { vakId = slug(naam); if (!d.vakken.some(function (v) { return v.id === vakId; })) d.vakken.push({ id: vakId, naam: naam }); });
+            }
+            await saveResources(function (d) { var m = d.items.find(function (x) { return x.id === r.id; }); if (m) m.vakIds = (m.vakIds || []).concat([vakId]); });
+          } catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+        });
+        suggSet.appendChild(chip);
+      });
+      suggWrap.appendChild(suggSet);
+      bp.appendChild(suggWrap);
+    }
 
     // afwezigheid: alleen inzien (de begeleider beheert dit zelf)
     var afwLbl = (r.afwezigheid || []).length
@@ -475,13 +516,15 @@
 
   // ================= TAB: inschrijvingen =================
   function inschrFlags(r) {
+    // 'sugg' (coral, afwijkend van gewone content) voor dingen die je zou kunnen
+    // oplossen; 'bad' blijft voor iets dat echt fout gaat (niet ingedeeld).
     var f = [];
-    if (!r.schoolId && r.schoolVrij) f.push({ cls: 'warn', t: 'nieuwe school' });
-    if (!r.jaarlaagId) f.push({ cls: 'warn', t: 'jaarlaag los' });
+    if (!r.schoolId && r.schoolVrij) f.push({ cls: 'sugg', t: 'nieuwe school' });
+    if (!r.jaarlaagId) f.push({ cls: 'sugg', t: 'jaarlaag los' });
     var bekend = new Set((state.config.vakken || []).map(function (v) { return vakKey(v.naam); }));
     var onbekend = false;
     (r.keuzes || []).forEach(function (k) { (k.vakken || []).forEach(function (v) { if (!bekend.has(vakKey(v))) onbekend = true; }); });
-    if (onbekend) f.push({ cls: 'info', t: 'nieuw vak' });
+    if (onbekend) f.push({ cls: 'sugg', t: 'nieuw vak' });
     var inSessie = (state.rooster.sessies || []).some(function (s) { return (s.leerlingIds || []).indexOf(r.id) !== -1; });
     if ((state.rooster.sessies || []).length && !inSessie && r.status !== 'geannuleerd') f.push({ cls: 'bad', t: 'niet ingedeeld' });
     return f;
@@ -582,6 +625,11 @@
       kSchool.addEventListener('click', function () { schoolKoppelDialog(r); });
       acties.appendChild(kSchool);
     }
+    if (!r.jaarlaagId) {
+      var kJaar = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', html: ico('link', { size: 13 }) + ' Jaarlaag koppelen' });
+      kJaar.addEventListener('click', function () { jaarlaagKoppelDialog(r); });
+      acties.appendChild(kJaar);
+    }
     var stSel = YP.el('select', { class: 'input', style: selStyle });
     ['nieuw', 'ingepland', 'afgerond', 'geannuleerd'].forEach(function (s) {
       var o = YP.el('option', { value: s, text: s }); if (r.status === s) o.selected = true; stSel.appendChild(o);
@@ -622,40 +670,47 @@
     });
   }
 
-  // Popup: koppel de ingetypte school aan een bestaande, of maak 'm aan met details.
+  // Popup: 1 klik voor het gangbare geval (school aanmaken met de ingetypte
+  // naam); "andere naam" en "koppel aan bestaande" staan als kleinere opties
+  // eronder in plaats van er evenveel gewicht aan te geven.
   function schoolKoppelDialog(r) {
     var vrijeNaam = r.schoolVrij || '';
     var dlg = document.createElement('dialog');
-    dlg.style.maxWidth = '460px';
+    dlg.style.maxWidth = '440px';
     dlg.innerHTML = '<div class="dlg"><h3>School koppelen</h3>' +
-      '<p class="dsub">De leerling typte <b>' + YP.esc(vrijeNaam) + '</b>. Koppel dat aan een bestaande school, of maak de school nu aan.</p>' +
+      '<p class="dsub">' + YP.esc(r.leerling.naam) + ' typte <b>' + YP.esc(vrijeNaam) + '</b>.</p>' +
       '<div class="db"></div>' +
       '<div class="dlg-actions"><button type="button" class="btn btn-ghost btn-sm" data-close>Annuleren</button></div></div>';
     var db = dlg.querySelector('.db');
 
+    var nieuwNaam = YP.el('input', { class: 'input hidden', value: vrijeNaam, style: 'margin-bottom:8px' });
+    var maakBtn = YP.el('button', { class: 'btn btn-cta btn-block', type: 'button', text: 'School "' + vrijeNaam + '" aanmaken en koppelen' });
+    db.appendChild(YP.el('div', { class: 'field' }, [nieuwNaam, maakBtn]));
+
+    var wijzigLink = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: 'padding:4px 0', text: 'Naam niet helemaal goed? Pas hem aan' });
+    wijzigLink.addEventListener('click', function () {
+      nieuwNaam.classList.remove('hidden'); nieuwNaam.focus(); wijzigLink.remove();
+    });
+    db.appendChild(wijzigLink);
+    nieuwNaam.addEventListener('input', function () { maakBtn.textContent = 'School "' + (nieuwNaam.value.trim() || vrijeNaam) + '" aanmaken en koppelen'; });
+
+    var toonBestaand = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: 'padding:4px 0;display:block;margin-top:2px', text: 'Liever koppelen aan een school die al bestaat?' });
+    var bestaandWrap = YP.el('div', { class: 'field hidden', style: 'margin-top:8px;border-top:1px solid var(--divider);padding-top:10px' });
     var sel = YP.el('select', { class: 'input' });
     sel.appendChild(YP.el('option', { value: '', text: 'Kies een bestaande school...' }));
     state.config.scholen.forEach(function (s) { sel.appendChild(YP.el('option', { value: s.id, text: s.naam })); });
-    var koppelBtn = YP.el('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'Koppelen' });
-    db.appendChild(YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Bestaande school' }), sel, YP.el('div', { style: 'margin-top:8px' }, [koppelBtn])]));
-
-    var nieuwNaam = YP.el('input', { class: 'input', value: vrijeNaam });
-    var maakBtn = YP.el('button', { class: 'btn btn-cta', type: 'button', text: 'School aanmaken en koppelen' });
-    db.appendChild(YP.el('div', { class: 'field', style: 'margin-bottom:0;border-top:1px solid var(--divider);padding-top:12px' }, [
-      YP.el('label', { text: 'Nieuwe school aanmaken' }), nieuwNaam, YP.el('div', { style: 'margin-top:8px' }, [maakBtn])
-    ]));
+    var koppelBtn = YP.el('button', { class: 'btn btn-primary btn-sm', type: 'button', style: 'margin-top:8px', text: 'Koppelen' });
+    bestaandWrap.appendChild(sel); bestaandWrap.appendChild(koppelBtn);
+    toonBestaand.addEventListener('click', function () { bestaandWrap.classList.remove('hidden'); toonBestaand.remove(); });
+    db.appendChild(toonBestaand);
+    db.appendChild(bestaandWrap);
 
     document.body.appendChild(dlg);
     dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
     dlg.addEventListener('close', function () { dlg.remove(); });
 
-    koppelBtn.addEventListener('click', async function () {
-      if (!sel.value) { YP.toast('Kies een school', 'bad'); return; }
-      try { await koppelAlleVrijeAan(vrijeNaam, sel.value); dlg.close(); YP.toast('School gekoppeld', 'ok'); render(); }
-      catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
-    });
     maakBtn.addEventListener('click', async function () {
-      var naam = nieuwNaam.value.trim();
+      var naam = (nieuwNaam.value.trim() || vrijeNaam);
       if (!naam) { YP.toast('Vul een naam in', 'bad'); return; }
       try {
         var nieuweId = slug(naam);
@@ -666,6 +721,68 @@
         });
         await koppelAlleVrijeAan(vrijeNaam, nieuweId);
         dlg.close(); YP.toast('School aangemaakt en gekoppeld', 'ok'); render();
+      } catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+    });
+    koppelBtn.addEventListener('click', async function () {
+      if (!sel.value) { YP.toast('Kies een school', 'bad'); return; }
+      try { await koppelAlleVrijeAan(vrijeNaam, sel.value); dlg.close(); YP.toast('School gekoppeld', 'ok'); render(); }
+      catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+    });
+    dlg.showModal();
+  }
+
+  // Popup: koppel een inschrijving zonder jaarlaagId aan een bestaande jaarlaag,
+  // of laat 'm automatisch vinden/aanmaken op basis van niveau + leerjaar
+  // (zelfde logica als vindOfMaakJaarlaag in de Worker).
+  function jaarlaagKoppelDialog(r) {
+    var dlg = document.createElement('dialog');
+    dlg.style.maxWidth = '460px';
+    var autoLabel = (r.niveau && r.leerjaar) ? (r.leerjaar + ' ' + (r.niveau === 'mavo' ? (state.config.instellingen.mavoLabel || 'vmbo-tl') : r.niveau)) : '';
+    dlg.innerHTML = '<div class="dlg"><h3>Jaarlaag koppelen</h3>' +
+      '<p class="dsub">' + YP.esc(r.leerling.naam) + (autoLabel ? ' gaf <b>' + YP.esc(autoLabel) + '</b> op, maar is nog aan geen jaarlaag gekoppeld.' : ' heeft geen niveau/leerjaar en geen jaarlaag.') + '</p>' +
+      '<div class="db"></div>' +
+      '<div class="dlg-actions"><button type="button" class="btn btn-ghost btn-sm" data-close>Annuleren</button></div></div>';
+    var db = dlg.querySelector('.db');
+
+    if (autoLabel) {
+      var autoBtn = YP.el('button', { class: 'btn btn-cta', type: 'button', text: 'Automatisch koppelen aan ' + autoLabel });
+      db.appendChild(YP.el('div', { class: 'field' }, [autoBtn]));
+      autoBtn.addEventListener('click', async function () {
+        try {
+          var wantId = 'jl_' + r.niveau + '_' + r.leerjaar;
+          state.config = await YP.api.save('/api/beheer/config', function (d) {
+            var bestaat = d.jaarlagen.some(function (j) { return j.id === wantId || (j.niveau === r.niveau && Number(j.leerjaar) === Number(r.leerjaar)); });
+            if (!bestaat) d.jaarlagen.push({ id: wantId, label: autoLabel, niveau: r.niveau, leerjaar: Number(r.leerjaar) });
+          });
+          var jl = state.config.jaarlagen.find(function (j) { return j.niveau === r.niveau && Number(j.leerjaar) === Number(r.leerjaar); });
+          state.inschrijvingen = await YP.api.save('/api/beheer/inschrijvingen', function (d) {
+            var m = d.items.find(function (x) { return x.id === r.id; });
+            if (m) m.jaarlaagId = jl ? jl.id : wantId;
+          });
+          dlg.close(); YP.toast('Jaarlaag gekoppeld', 'ok'); render();
+        } catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
+      });
+    }
+
+    var sel = YP.el('select', { class: 'input' });
+    sel.appendChild(YP.el('option', { value: '', text: 'Kies een bestaande jaarlaag...' }));
+    (state.config.jaarlagen || []).forEach(function (j) { sel.appendChild(YP.el('option', { value: j.id, text: j.label })); });
+    var koppelBtn = YP.el('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'Koppelen' });
+    db.appendChild(YP.el('div', { class: 'field', style: 'margin-bottom:0;border-top:' + (autoLabel ? '1px solid var(--divider);padding-top:12px' : '0') }, [
+      YP.el('label', { text: 'Of kies een andere jaarlaag' }), sel, YP.el('div', { style: 'margin-top:8px' }, [koppelBtn])
+    ]));
+
+    document.body.appendChild(dlg);
+    dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    koppelBtn.addEventListener('click', async function () {
+      if (!sel.value) { YP.toast('Kies een jaarlaag', 'bad'); return; }
+      try {
+        state.inschrijvingen = await YP.api.save('/api/beheer/inschrijvingen', function (d) {
+          var m = d.items.find(function (x) { return x.id === r.id; });
+          if (m) m.jaarlaagId = sel.value;
+        });
+        dlg.close(); YP.toast('Jaarlaag gekoppeld', 'ok'); render();
       } catch (e) { YP.toast(e.message || 'Mislukt', 'bad'); }
     });
     dlg.showModal();
@@ -740,7 +857,7 @@
     var groepen = [
       { sev: 'hoog', cls: 'bad', titel: 'Los eerst op' },
       { sev: 'midden', cls: 'warn', titel: 'Aandacht' },
-      { sev: 'laag', cls: 'info', titel: 'Klein' }
+      { sev: 'laag', cls: 'sugg', titel: 'Klein' }
     ];
     groepen.forEach(function (grp) {
       var items = list.filter(function (k) { return k.severity === grp.sev; });
@@ -1179,8 +1296,21 @@
     panel.innerHTML = '';
     var wrap = YP.el('div', { class: 'stack' });
     var card = YP.el('div', { class: 'card' });
-    card.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Accounts' })]));
+    card.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: 'Accounts (' + data.items.length + ')' })]));
     var pad = YP.el('div', { class: 'card-pad' });
+
+    // Nieuw account: bovenaan en duidelijk, niet weggestopt onder de lijst.
+    var nieuwFold = YP.el('details', { class: 'fold', style: 'margin-bottom:14px' });
+    if (data.items.length <= 1) nieuwFold.setAttribute('open', 'open');
+    nieuwFold.appendChild(YP.el('summary', {}, [
+      YP.el('span', { style: 'display:inline-flex;vertical-align:-3px;margin-right:6px', html: ico('plus', { size: 16 }) }),
+      document.createTextNode('Nieuw account aanmaken')
+    ]));
+    var nieuwBody = YP.el('div', { class: 'fold-body' });
+    nieuwFold.appendChild(nieuwBody);
+    pad.appendChild(nieuwFold);
+
+    pad.appendChild(YP.el('div', { class: 'label', style: 'margin:0 0 6px', text: 'Bestaande accounts' }));
     var list = YP.el('div', { class: 'list' });
     if (!data.items.length) list.appendChild(YP.el('div', { class: 'empty', text: 'Nog geen accounts.' }));
     data.items.forEach(function (u) {
@@ -1285,8 +1415,8 @@
         renderAccounts();
       } catch (ex) { YP.toast(ex.message || 'Mislukt', 'bad'); }
     });
-    pad.appendChild(f);
-    pad.appendChild(YP.el('p', { class: 'hint', text: 'Een begeleider hoef je hier maar één keer aan te maken; het trainerprofiel ontstaat meteen mee. Zonder wachtwoord logt iemand in via de persoonlijke link (30 dagen geldig). Echte uitnodigingsmail volgt.' }));
+    nieuwBody.appendChild(f);
+    nieuwBody.appendChild(YP.el('p', { class: 'hint', text: 'Een begeleider hoef je hier maar één keer aan te maken; het trainerprofiel ontstaat meteen mee. Zonder wachtwoord logt iemand in via de persoonlijke link (30 dagen geldig) en kan diegene er meteen zelf een wachtwoord bij instellen.' }));
     card.appendChild(pad); wrap.appendChild(card);
     panel.appendChild(wrap);
   }

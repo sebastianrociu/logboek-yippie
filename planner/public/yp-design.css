@@ -346,6 +346,15 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .rijbadge.warn{background:var(--warn-bg);color:var(--warn)}
 .rijbadge.bad{background:var(--bad-bg);color:var(--bad)}
 .rijbadge.info{background:var(--divider);color:var(--ink-2)}
+/* suggestie: iets dat je zou kunnen doen (niet: een gekozen/actieve waarde).
+   Coral-getint zodat het nooit oogt als gewone content zoals een jaarlaag-chip. */
+.rijbadge.sugg{background:var(--coral-light);color:var(--coral-dark)}
+.notice.sugg{background:var(--coral-light);border-color:#F0BCAF;color:var(--coral-dark)}
+.chip-sugg{display:inline-flex;align-items:center;gap:5px;padding:5px 6px 5px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:700;background:var(--coral-light);color:var(--coral-dark);
+  border:1.5px dashed #F0BCAF;cursor:pointer;transition:background .12s,border-color .12s}
+.chip-sugg:hover{background:#FBDCD7;border-color:var(--coral)}
+.chip-sugg .plus{display:inline-flex}
 .groep-kop{display:flex;align-items:center;gap:8px;font-weight:800;font-size:12.5px;color:var(--ink);padding:7px 4px 5px;cursor:pointer}
 .groep-kop .gk-chev{color:var(--chev);transition:transform .15s}
 .groep-kop.dicht .gk-chev{transform:rotate(-90deg)}

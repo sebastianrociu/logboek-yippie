@@ -328,14 +328,14 @@ function requireRole(auth, rol) {
   return auth;
 }
 // Sessiecookie zetten voor een gebruiker (na wachtwoord of persoonlijke link).
-async function sessieAntwoord(env, user, secure) {
+async function sessieAntwoord(env, user, secure, extra) {
   const maxAge = 60 * 60 * 12;
   const token = await signSession(env, {
     uid: user.id, rol: user.rol, naam: user.naam,
     sid: user.schoolId || null, rid: user.resourceId || null,
     exp: Date.now() + maxAge * 1000,
   });
-  return json({ rol: user.rol, naam: user.naam }, 200, { 'set-cookie': cookieHeader(token, maxAge, secure) });
+  return json({ rol: user.rol, naam: user.naam, ...(extra || {}) }, 200, { 'set-cookie': cookieHeader(token, maxAge, secure) });
 }
 
 /* ---------- stub-mail --------------------------------------------------- */
@@ -874,7 +874,30 @@ async function handleApi(request, env) {
     const users = await readJSON(env, KEYS.users);
     const user = users.items.find((u) => u.loginTokenHash === h && (!u.loginTokenExp || u.loginTokenExp > Date.now()));
     if (!user) throw new HttpError(401, 'deze inloglink is niet (meer) geldig');
-    return await sessieAntwoord(env, user, secure);
+    return await sessieAntwoord(env, user, secure, { heeftWachtwoord: !!user.hash });
+  }
+
+  // Wachtwoord instellen via een geldige eenmalige inloglink (zelfde token als
+  // hierboven), zodat een begeleider/mentor voortaan zonder link kan inloggen.
+  if (path === '/api/auth/wachtwoord-instellen' && method === 'POST') {
+    await rateLimit(env, 'authlink', clientIp, 20, 900);
+    const linkTok = str(body.token, 64);
+    const pw = String(body.wachtwoord || '');
+    if (!linkTok) throw new HttpError(400, 'token ontbreekt');
+    const pwFout = validatePassword(pw);
+    if (pwFout) throw new HttpError(400, pwFout);
+    const h = await sha256hex(linkTok);
+    const users = await readJSON(env, KEYS.users);
+    const bestaand = users.items.find((u) => u.loginTokenHash === h && (!u.loginTokenExp || u.loginTokenExp > Date.now()));
+    if (!bestaand) throw new HttpError(401, 'deze inloglink is niet (meer) geldig');
+    const { salt, hash } = await hashPassword(pw);
+    const na = await mutate(env, KEYS.users, (d) => {
+      const u = d.items.find((x) => x.id === bestaand.id);
+      if (u) { u.salt = salt; u.hash = hash; }
+      return d;
+    });
+    const user = na.items.find((x) => x.id === bestaand.id);
+    return await sessieAntwoord(env, user, secure, { heeftWachtwoord: true });
   }
 
   if (path === '/api/logout' && method === 'POST') {

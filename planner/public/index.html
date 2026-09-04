@@ -94,10 +94,33 @@
   // Persoonlijke inloglink: /?login=<token>
   var loginTok = params.get('login');
   if (loginTok) {
-    document.body.innerHTML = '<main class="wrap wrap-narrow"><div class="card card-pad"><div class="empty" id="ll-msg">Inloggen...</div></div></main>';
+    document.body.innerHTML = '<main class="wrap wrap-narrow"><div class="card card-pad" id="ll-card"><div class="empty" id="ll-msg">Inloggen...</div></div></main>';
+    var llCard = document.getElementById('ll-card');
+    // history.replaceState: het token verdwijnt uit de adresbalk/geschiedenis
+    // zodra het gebruikt is (het staat dan nog wel in de sessiecookie, niet in de URL).
+    var schoon = function () { try { history.replaceState(null, '', location.pathname); } catch (e) {} };
     YP.api.post('/api/auth/link', { token: loginTok }).then(function (r) {
-      location.replace(ROUTE[r.rol] || '/');
+      if (r.heeftWachtwoord) { schoon(); location.replace(ROUTE[r.rol] || '/'); return; }
+      // Eerste keer op een link-only account: bied direct aan een wachtwoord te
+      // zetten zodat een volgende keer geen nieuwe link nodig is (mag ook later).
+      llCard.innerHTML = '';
+      llCard.appendChild(YP.el('h2', { text: 'Welkom' }));
+      llCard.appendChild(YP.el('p', { class: 'card-sub', text: 'Je bent ingelogd. Stel meteen een wachtwoord in, dan kun je de volgende keer inloggen zonder link. Dit mag ook later.' }));
+      var pw = YP.el('input', { class: 'input', type: 'password', autocomplete: 'new-password', minlength: '10', placeholder: 'Nieuw wachtwoord (minstens 10 tekens)', style: 'margin-top:12px' });
+      var err = YP.el('p', { class: 'err hidden' });
+      var zet = YP.el('button', { class: 'btn btn-cta btn-block', style: 'margin-top:10px', text: 'Wachtwoord instellen' });
+      var later = YP.el('a', { class: 'btn btn-ghost btn-block', href: ROUTE[r.rol] || '/', style: 'margin-top:8px', text: 'Later, ga meteen door' });
+      later.addEventListener('click', schoon);
+      zet.addEventListener('click', async function () {
+        err.classList.add('hidden'); zet.disabled = true;
+        try {
+          await YP.api.post('/api/auth/wachtwoord-instellen', { token: loginTok, wachtwoord: pw.value });
+          schoon(); location.replace(ROUTE[r.rol] || '/');
+        } catch (e2) { err.textContent = e2.message || 'Instellen mislukt.'; err.classList.remove('hidden'); zet.disabled = false; }
+      });
+      llCard.appendChild(pw); llCard.appendChild(err); llCard.appendChild(zet); llCard.appendChild(later);
     }).catch(function (e) {
+      schoon();
       document.getElementById('ll-msg').innerHTML = '<div class="notice bad">' + YP.esc(e.message || 'Deze inloglink werkt niet meer.') + '</div><p class="hint" style="margin-top:10px"><a href="/">Naar het inlogscherm</a></p>';
     });
     return;
