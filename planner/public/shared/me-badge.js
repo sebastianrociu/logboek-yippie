@@ -57,7 +57,7 @@
           '<h1>' + YP.esc(title) + '</h1>' +
           '<div class="subline">' + YP.esc(langeDatum()) + '</div>' +
         '</div>' +
-        '<div class="hdr-actions">' + (ingelogd ? '' : helpBtn) + avatar + menu + '</div>' +
+        '<div class="hdr-actions">' + helpBtn + avatar + menu + '</div>' +
       '</div>' +
       '<div class="hdr-wave"></div>';
 

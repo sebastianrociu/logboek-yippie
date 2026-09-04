@@ -185,53 +185,130 @@
     blokKeuze.appendChild(YP.el('p', { class: 'hint', text: 'Vink een blok uit als je dat hele blok niet kunt. Fijner voor de planning is minstens een heel blok.' }));
     bp2.appendChild(blokKeuze);
 
-    // samenvatting van wat er uitstaat
+    // ---- samenvatting "wat je hebt uitgezet" (compact, gegroepeerd per blok) ----
     var samenv = YP.el('div', { style: 'margin-bottom:10px' });
+    var samenvOpen = {}; // blokId -> losse dagdelen uitgeklapt
+    function blokVanDatum(datum) {
+      return (data.blokken || []).find(function (b) {
+        return weekendDatums(b.van, b.tot, b.dagen).some(function (d) { return d.datum === datum; });
+      });
+    }
     function paintSamenv() {
       samenv.innerHTML = '';
-      if (!afw.length) { samenv.appendChild(YP.el('p', { class: 'hint', style: 'margin:0', text: 'Je hebt niets uitgezet: volledig beschikbaar.' })); return; }
-      samenv.appendChild(YP.el('div', { class: 'label', style: 'margin-bottom:4px', text: 'Je kan niet op' }));
-      var set = YP.el('div', { class: 'chipset dense' });
-      afw.slice().sort(function (a, b) { return a.datum < b.datum ? -1 : 1; }).forEach(function (x) {
-        set.appendChild(tagChip(kortDatum(x.datum) + ' ' + (DDNAAM[x.dagdeel] || x.dagdeel), function () { zetKanNiet(x.datum, x.dagdeel, false); paintKalender(); }));
+      if (!afw.length) {
+        samenv.appendChild(YP.el('p', { class: 'hint', style: 'margin:0', text: 'Je hebt niets uitgezet: je staat elke trainingsdag beschikbaar.' }));
+        return;
+      }
+      samenv.appendChild(YP.el('div', { class: 'label', style: 'margin-bottom:6px', text: 'Wat je hebt uitgezet' }));
+      var perBlok = {}, overig = [];
+      afw.forEach(function (x) {
+        var b = blokVanDatum(x.datum);
+        if (b) { (perBlok[b.id] = perBlok[b.id] || []).push(x); } else overig.push(x);
       });
-      samenv.appendChild(set);
+      (data.blokken || []).forEach(function (b) {
+        var lijst = perBlok[b.id];
+        if (!lijst || !lijst.length) return;
+        var heel = blokHelemaalUit(b);
+        var rij = YP.el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px' }, [
+          YP.el('span', { style: 'font-size:12px;font-weight:800;color:var(--ink-2)', text: b.label.replace(/\s*\(.*\)/, '') })
+        ]);
+        if (heel) {
+          rij.appendChild(tagChip('hele blok', function () { zetBlokUit(b, false); paintKalender(); }));
+        } else {
+          rij.appendChild(YP.el('span', { class: 'hint', style: 'margin:0', text: lijst.length + ' dagdeel(en) uit' }));
+          var toon = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: samenvOpen[b.id] ? 'Verberg' : 'Bekijk' });
+          toon.addEventListener('click', function () { samenvOpen[b.id] = !samenvOpen[b.id]; paintSamenv(); });
+          rij.appendChild(toon);
+        }
+        samenv.appendChild(rij);
+        if (!heel && samenvOpen[b.id]) {
+          var set = YP.el('div', { class: 'chipset dense', style: 'margin:0 0 8px 2px' });
+          lijst.slice().sort(function (a, c) { return a.datum < c.datum ? -1 : 1; }).forEach(function (x) {
+            set.appendChild(tagChip(kortDatum(x.datum) + ' ' + (DDNAAM[x.dagdeel] || x.dagdeel), function () { zetKanNiet(x.datum, x.dagdeel, false); paintKalender(); }));
+          });
+          samenv.appendChild(set);
+        }
+      });
+      if (overig.length) {
+        var set2 = YP.el('div', { class: 'chipset dense', style: 'margin:4px 0 0' });
+        overig.slice().sort(function (a, c) { return a.datum < c.datum ? -1 : 1; }).forEach(function (x) {
+          set2.appendChild(tagChip(kortDatum(x.datum) + ' ' + (DDNAAM[x.dagdeel] || x.dagdeel), function () { zetKanNiet(x.datum, x.dagdeel, false); paintKalender(); }));
+        });
+        samenv.appendChild(set2);
+      }
     }
 
     var blokWrap = YP.el('div', {});
-    function paintKalender() {
+
+    // Lichte update: raakt alleen de standen aan, bouwt de folds NIET opnieuw op,
+    // zodat een open blok open blijft terwijl je klikt.
+    function refreshStates() {
       paintSamenv();
-      // blok-checkboxes bijwerken
       Array.prototype.forEach.call(bkSet.querySelectorAll('input'), function (inp, i) {
-        var b = (data.blokken || [])[i];
-        if (b) inp.checked = !blokHelemaalUit(b);
+        var b = (data.blokken || [])[i]; if (b) inp.checked = !blokHelemaalUit(b);
       });
-      blokWrap.innerHTML = '';
-      (data.blokken || []).forEach(function (b, bi) {
+      Array.prototype.forEach.call(blokWrap.querySelectorAll('.availcell'), function (cell) {
+        var uit = kanNiet(cell.getAttribute('data-datum'), cell.getAttribute('data-dd'));
+        cell.classList.toggle('off', uit);
+        var st = cell.querySelector('.ac-state'); if (st) st.textContent = uit ? 'Kan niet' : 'Beschikbaar';
+      });
+      Array.prototype.forEach.call(blokWrap.querySelectorAll('details[data-blok]'), function (fold) {
+        var b = (data.blokken || []).find(function (x) { return x.id === fold.getAttribute('data-blok'); });
+        if (!b) return;
         var datums = weekendDatums(b.van, b.tot, b.dagen);
-        var fold = YP.el('details', { class: 'fold' });
-        if (bi === 0 && !blokHelemaalUit(b)) fold.setAttribute('open', 'open');
         var off = datums.reduce(function (n, d) { return n + (kanNiet(d.datum, 'ochtend') ? 1 : 0) + (kanNiet(d.datum, 'middag') ? 1 : 0); }, 0);
+        var fc = fold.querySelector('.fold-count');
+        if (fc) fc.textContent = blokPeriode(b) + '  -  ' + (blokHelemaalUit(b) ? 'hele blok uit' : (off ? off + ' dagdeel(en) uit' : 'volledig beschikbaar'));
+        Array.prototype.forEach.call(fold.querySelectorAll('[data-toggle]'), function (btn) {
+          var kind = btn.getAttribute('data-toggle');
+          var groep = kind === 'blok' ? datums : datums.filter(function (d) { return d.dag === kind; });
+          var aan = groep.length && groep.every(function (d) { return kanNiet(d.datum, 'ochtend') && kanNiet(d.datum, 'middag'); });
+          btn.classList.toggle('btn-primary', !!aan);
+          btn.classList.toggle('btn-ghost', !aan);
+          btn.setAttribute('aria-pressed', String(!!aan));
+        });
+      });
+    }
+
+    function paintKalender() {
+      var openIds = {};
+      Array.prototype.forEach.call(blokWrap.querySelectorAll('details[data-blok]'), function (f) { if (f.open) openIds[f.getAttribute('data-blok')] = 1; });
+      var geenOnthouden = !Object.keys(openIds).length;
+      blokWrap.innerHTML = '';
+      var eerste = true;
+      (data.blokken || []).forEach(function (b) {
+        var datums = weekendDatums(b.van, b.tot, b.dagen);
+        var fold = YP.el('details', { class: 'fold', 'data-blok': b.id });
+        if (openIds[b.id] || (geenOnthouden && eerste && !blokHelemaalUit(b))) fold.setAttribute('open', 'open');
+        eerste = false;
         var sum = YP.el('summary', { text: b.label.replace(/\s*\(.*\)/, '') });
-        sum.appendChild(YP.el('span', { class: 'fold-count', text: blokPeriode(b) + '  -  ' + (blokHelemaalUit(b) ? 'hele blok uit' : (off ? off + ' dagdeel(en) uit' : 'volledig beschikbaar')) }));
+        sum.appendChild(YP.el('span', { class: 'fold-count' }));
         fold.appendChild(sum);
         var body = YP.el('div', { class: 'fold-body tight' });
 
         if (!datums.length) { body.appendChild(YP.el('div', { class: 'hint', text: 'Dit blok heeft nog geen begin- en einddatum.' })); fold.appendChild(body); blokWrap.appendChild(fold); return; }
 
-        var zoek = YP.el('input', { class: 'input', type: 'search', placeholder: 'Zoek een datum (bijv. 8 nov of zaterdag)', style: 'margin-bottom:8px' });
+        body.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 8px', text: 'Tik een dagdeel of een dag aan om die uit te zetten. Nog een keer tikken zet het weer aan.' }));
+
         var acts = YP.el('div', { class: 'row', style: 'margin-bottom:8px' });
-        var mkAct = function (txt, fn) {
-          var x = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: txt });
-          x.addEventListener('click', function () { fn(datums); paintKalender(); });
-          return x;
-        };
-        acts.appendChild(mkAct('Hele blok kan ik niet', function () { zetBlokUit(b, true); }));
-        acts.appendChild(mkAct('Alle zaterdagen uit', function (ds) { ds.forEach(function (d) { if (d.dag === 'za') { zetKanNiet(d.datum, 'ochtend', true); zetKanNiet(d.datum, 'middag', true); } }); }));
-        acts.appendChild(mkAct('Alle zondagen uit', function (ds) { ds.forEach(function (d) { if (d.dag === 'zo') { zetKanNiet(d.datum, 'ochtend', true); zetKanNiet(d.datum, 'middag', true); } }); }));
-        acts.appendChild(mkAct('Blok weer helemaal aan', function (ds) { var set = {}; ds.forEach(function (d) { set[d.datum] = 1; }); afw = afw.filter(function (s) { return !set[s.datum]; }); }));
-        body.appendChild(zoek);
+        function mkToggle(kind, txt, groep) {
+          if (kind !== 'blok' && !groep.length) return;
+          var x = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', 'data-toggle': kind, 'aria-pressed': 'false', text: txt });
+          x.addEventListener('click', function () {
+            var g = kind === 'blok' ? datums : datums.filter(function (d) { return d.dag === kind; });
+            var aan = g.length && g.every(function (d) { return kanNiet(d.datum, 'ochtend') && kanNiet(d.datum, 'middag'); });
+            g.forEach(function (d) { zetKanNiet(d.datum, 'ochtend', !aan); zetKanNiet(d.datum, 'middag', !aan); });
+            refreshStates();
+          });
+          acts.appendChild(x);
+        }
+        mkToggle('blok', 'Hele blok', datums);
+        mkToggle('za', 'Alle zaterdagen', datums.filter(function (d) { return d.dag === 'za'; }));
+        mkToggle('zo', 'Alle zondagen', datums.filter(function (d) { return d.dag === 'zo'; }));
         body.appendChild(acts);
+
+        var zoek = YP.el('input', { class: 'input', type: 'search', placeholder: 'Zoek een datum (bijv. 8 nov of zaterdag)', style: 'margin-bottom:8px' });
+        body.appendChild(zoek);
 
         var grid = YP.el('div', { class: 'availgrid' });
         datums.forEach(function (d) {
@@ -241,16 +318,16 @@
           dagBtn.addEventListener('click', function () {
             var allesUit = kanNiet(d.datum, 'ochtend') && kanNiet(d.datum, 'middag');
             zetKanNiet(d.datum, 'ochtend', !allesUit); zetKanNiet(d.datum, 'middag', !allesUit);
-            paintKalender();
+            refreshStates();
           });
           col.appendChild(dagBtn);
           ['ochtend', 'middag'].forEach(function (dd) {
             var uit = kanNiet(d.datum, dd);
-            var cell = YP.el('button', { type: 'button', class: 'availcell' + (uit ? ' off' : '') }, [
+            var cell = YP.el('button', { type: 'button', class: 'availcell' + (uit ? ' off' : ''), 'data-datum': d.datum, 'data-dd': dd }, [
               document.createTextNode(DDNAAM[dd]),
               YP.el('span', { class: 'ac-state', text: uit ? 'Kan niet' : 'Beschikbaar' })
             ]);
-            cell.addEventListener('click', function () { zetKanNiet(d.datum, dd, !kanNiet(d.datum, dd)); paintKalender(); });
+            cell.addEventListener('click', function () { zetKanNiet(d.datum, dd, !kanNiet(d.datum, dd)); refreshStates(); });
             col.appendChild(cell);
           });
           grid.appendChild(col);
@@ -267,6 +344,7 @@
         blokWrap.appendChild(fold);
       });
       if (!(data.blokken || []).length) blokWrap.appendChild(YP.el('div', { class: 'empty', text: 'Er zijn nog geen blokken met datums ingesteld.' }));
+      refreshStates();
     }
     paintKalender();
     bp2.appendChild(samenv);
@@ -420,9 +498,69 @@
     notit.value = s.notitie || '';
     db.appendChild(YP.el('div', { class: 'field', style: 'margin-top:14px;margin-bottom:0' }, [YP.el('label', { text: 'Notitie bij deze sessie' }), notit]));
 
+    // ---- Groot scherm: presenteermodus voor op een beamer / groot scherm ----
+    // AVG: toont alleen voornaam + eerste letter achternaam, geen notitie,
+    // geen bijzonderheden. Puur voor het aftikken van aanwezigheid in de klas.
+    function korteNaam(naam) {
+      var p = String(naam || '').trim().split(/\s+/).filter(Boolean);
+      if (!p.length) return '?';
+      if (p.length === 1) return p[0];
+      return p[0] + ' ' + p[p.length - 1][0].toUpperCase() + '.';
+    }
+    function grootScherm() {
+      var gd = document.createElement('dialog');
+      gd.style.cssText = 'width:100vw;max-width:100vw;height:100vh;max-height:100vh;border:0;padding:0;margin:0;background:#fff';
+      var wrap = YP.el('div', { style: 'display:flex;flex-direction:column;height:100vh;padding:24px;box-sizing:border-box' });
+      var tel = YP.el('span', { style: 'font-size:20px;font-weight:800;color:var(--coral-dark)' });
+      var sluit = YP.el('button', { class: 'btn btn-ghost', type: 'button', text: 'Sluiten' });
+      wrap.appendChild(YP.el('div', { style: 'display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:6px' }, [
+        YP.el('h2', { style: 'font-size:26px;margin:0', text: s.vak + (s.jaarlaag ? '  -  ' + s.jaarlaag : '') }),
+        YP.el('span', { style: 'font-size:16px;color:var(--mute)', text: (s.datum ? langDatum(s.datum) + ', ' : '') + (s.van || '') + ' tot ' + (s.tot || '') }),
+        tel,
+        YP.el('span', { style: 'margin-left:auto' }, [sluit])
+      ]));
+      wrap.appendChild(YP.el('p', { class: 'hint', style: 'margin:0 0 14px', text: 'Tik een naam aan: groen = aanwezig, grijs = afwezig. Wie zich heeft afgemeld staat apart.' }));
+      var grid = YP.el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;overflow-y:auto;align-content:start;flex:1' });
+      wrap.appendChild(grid);
+      gd.appendChild(wrap);
+
+      function telG() {
+        var a = 0, af = 0;
+        s.leerlingen.forEach(function (l) { if (st[l.id] === 'aanwezig') a++; else if (st[l.id] === 'afgemeld') af++; });
+        tel.textContent = a + ' / ' + (s.leerlingen.length - af) + ' aanwezig' + (af ? '  (' + af + ' afgemeld)' : '');
+      }
+      function tegels() {
+        grid.innerHTML = '';
+        s.leerlingen.slice().sort(function (a, b) { return korteNaam(a.naam) < korteNaam(b.naam) ? -1 : 1; }).forEach(function (l) {
+          var status = st[l.id] || 'afwezig';
+          var aanwezig = status === 'aanwezig';
+          var afgemeld = status === 'afgemeld';
+          var tegel = YP.el('button', { type: 'button', style:
+            'padding:20px 14px;border-radius:16px;border:2px solid ' + (aanwezig ? 'var(--ok)' : afgemeld ? 'var(--warn)' : '#D3D8E0') + ';' +
+            'background:' + (aanwezig ? 'var(--ok-bg)' : afgemeld ? 'var(--warn-bg)' : '#F4F5F7') + ';' +
+            'color:' + (aanwezig ? 'var(--ok)' : afgemeld ? 'var(--warn)' : 'var(--mute)') + ';' +
+            'font-size:20px;font-weight:800;cursor:' + (afgemeld ? 'default' : 'pointer') + ';text-align:center;line-height:1.3',
+            text: korteNaam(l.naam)
+          });
+          tegel.appendChild(YP.el('span', { style: 'display:block;font-size:12px;font-weight:700;margin-top:6px;text-transform:uppercase;letter-spacing:.04em', text: aanwezig ? 'aanwezig' : afgemeld ? 'afgemeld' : 'afwezig' }));
+          if (!afgemeld) tegel.addEventListener('click', function () { st[l.id] = aanwezig ? 'afwezig' : 'aanwezig'; tegels(); telG(); });
+          grid.appendChild(tegel);
+        });
+      }
+      tegels(); telG();
+      sluit.addEventListener('click', function () { gd.close(); });
+      document.body.appendChild(gd);
+      gd.addEventListener('close', function () { gd.remove(); if (typeof herteken === 'function') herteken(); });
+      gd.showModal();
+    }
+
     var annuleer = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: 'Sluiten zonder opslaan' });
     var opslaan = YP.el('button', { class: 'btn btn-cta', type: 'button', text: 'Opslaan en sluiten' });
-    db.appendChild(YP.el('div', { class: 'actionbar' }, [annuleer, opslaan]));
+    var grootBtn = YP.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', html: ico('users', { size: 14 }) + ' Groot scherm' });
+    grootBtn.addEventListener('click', grootScherm);
+    var abar = YP.el('div', { class: 'actionbar' }, [annuleer, opslaan]);
+    if (s.leerlingen.length) abar.insertBefore(grootBtn, annuleer);
+    db.appendChild(abar);
 
     annuleer.addEventListener('click', function () { dlg.close(); });
     opslaan.addEventListener('click', async function () {
