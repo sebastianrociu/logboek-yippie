@@ -63,7 +63,7 @@ public/
   inschrijven/index.html   publiek inschrijfformulier
   mijn/index.html          persoonlijke indeling (token-link), afmelden
   beheer/index.html        Yippie: inschrijvingen, sessies, begeleiders, scholen, accounts
-  resource/index.html      begeleider: eigen beschikbaarheid + eigen rooster
+  begeleider/index.html    begeleider: eigen beschikbaarheid + eigen rooster
   school/index.html        school/mentor: alleen-lezen overzicht eigen leerlingen
   yp-design.css            design-systeem
   vendor/tailwind.css      zelf-gehoste utility-subset

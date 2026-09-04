@@ -7,7 +7,7 @@
     { label: 'Inschrijven', hint: 'Publiek formulier', run: function () { location.href = '/inschrijven/'; } },
     { label: 'Beheer', hint: 'Yippie', run: function () { location.href = '/beheer/'; } },
     { label: 'Mijn indeling', hint: 'Leerling of ouder', run: function () { location.href = '/mijn/'; } },
-    { label: 'Mijn rooster', hint: 'Begeleider', run: function () { location.href = '/resource/'; } },
+    { label: 'Mijn rooster', hint: 'Begeleider', run: function () { location.href = '/begeleider/'; } },
     { label: 'Schooloverzicht', hint: 'Mentor', run: function () { location.href = '/school/'; } }
   ];
   var extra = [];

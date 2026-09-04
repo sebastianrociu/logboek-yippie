@@ -1187,10 +1187,10 @@ async function handleApi(request, env) {
     throw new HttpError(404, 'onbekende beheer-route');
   }
 
-  /* --- RESOURCE (rol resource) --- */
-  if (path.startsWith('/api/resource/')) {
+  /* --- BEGELEIDER (pad /api/begeleider, rol 'resource' zoals in de opdracht) --- */
+  if (path.startsWith('/api/begeleider/')) {
     const auth = requireRole(await getAuth(env, request), 'resource');
-    const sub = path.slice('/api/resource/'.length);
+    const sub = path.slice('/api/begeleider/'.length);
     const rid = auth.resourceId;
 
     if (sub === 'mij' && method === 'GET') {
@@ -1290,7 +1290,7 @@ async function handleApi(request, env) {
       });
       return json({ ok: true });
     }
-    throw new HttpError(404, 'onbekende resource-route');
+    throw new HttpError(404, 'onbekende begeleider-route');
   }
 
   /* --- SCHOOL / MENTOR (rol mentor) - server stript naar eigen school --- */

@@ -89,7 +89,7 @@
 (function () {
   var params = new URLSearchParams(location.search);
   var next = params.get('next') || '';
-  var ROUTE = { beheerder: '/beheer/', resource: '/resource/', mentor: '/school/' };
+  var ROUTE = { beheerder: '/beheer/', resource: '/begeleider/', mentor: '/school/' };
 
   // Persoonlijke inloglink: /?login=<token>
   var loginTok = params.get('login');

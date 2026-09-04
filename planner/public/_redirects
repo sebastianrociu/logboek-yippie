@@ -1,0 +1,5 @@
+# Oude naam van de begeleiderspagina (/resource/) -> /begeleider/.
+# Bestaande bookmarks en oude inloglinks blijven zo werken.
+/resource            /begeleider            301
+/resource/           /begeleider/           301
+/resource/*          /begeleider/:splat     301

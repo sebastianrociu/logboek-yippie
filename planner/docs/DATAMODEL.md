@@ -28,12 +28,12 @@ bij de eerstvolgende `mutate()` van die sectie; er is geen bulk-migratie.
 
 `instellingen.tijden` bepaalt de begin- en eindtijd per dagdeel (beheer past ze
 aan bij Scholen en vakken; standaard loopt een dag 09:00-16:00). `van`/`tot`
-komen mee op elke sessie in `/api/resource/mij`, `/api/mijn` en
+komen mee op elke sessie in `/api/begeleider/mij`, `/api/mijn` en
 `/api/school/overzicht`.
 
 `jaarlagen` bevat sinds deze ronde het **volledige standaardrooster** (mavo 1-4,
 havo 1-5, vwo 1-6) met ids `jl_<niveau>_<leerjaar>`; `vindOfMaakJaarlaag` gebruikt
-datzelfde schema. `/api/resource/mij` vult met `alleJaarlagen()` nog aan zodat de
+datzelfde schema. `/api/begeleider/mij` vult met `alleJaarlagen()` nog aan zodat de
 trainer echt elke jaarlaag kan aanvinken, ook als config er handmatig van
 afwijkt.
 
@@ -84,7 +84,7 @@ data; dev-KV is resetbaar, dus geen bulk-migratie).
 **Rechten.** `PUT /api/beheer/resources` laat beheer alleen `naam`, `email`,
 `vakIds`, `jaarlaagIds` en `maxPerWeekend` wijzigen. `vakVoorkeuren`,
 `voorkeurJaarlagen` en `voorkeurVakkenVrij`/`voorkeurVakVrij` kan beheer **nooit**
-overschrijven (alleen de begeleider via `PUT /api/resource/beschikbaarheid`).
+overschrijven (alleen de begeleider via `PUT /api/begeleider/beschikbaarheid`).
 `afwezigheid` overschrijft beheer alleen als het request `staAfwezigheidToe: true`
 meestuurt (UI: na een expliciete ontgrendeling met dubbele bevestiging). Beheer
 leest de sectie wel voor de compacte begeleiderkaart, en
@@ -222,10 +222,10 @@ inloglink").
 ```
 
 Aanwezigheidswaarden: `aanwezig` | `afwezig` | `afgemeld`. De begeleider zet ze
-per leerling (`POST /api/resource/aanwezigheid`) en schrijft één notitie per
-sessie (`POST /api/resource/notitie`, leeg = wissen, max 1000 tekens). Beheer en
+per leerling (`POST /api/begeleider/aanwezigheid`) en schrijft één notitie per
+sessie (`POST /api/begeleider/notitie`, leeg = wissen, max 1000 tekens). Beheer en
 de school lezen de notitie mee (`/api/school/overzicht`); de begeleider ziet de
-eigen notitie terug in `/api/resource/mij`.
+eigen notitie terug in `/api/begeleider/mij`.
 
 ## Persoonlijke pagina leerling/ouder
 

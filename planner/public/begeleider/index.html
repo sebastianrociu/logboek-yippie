@@ -279,7 +279,7 @@
     save.addEventListener('click', async function () {
       save.disabled = true;
       try {
-        await YP.api.put('/api/resource/beschikbaarheid', { afwezigheid: afw, maxPerWeekend: +mx.value || 0 });
+        await YP.api.put('/api/begeleider/beschikbaarheid', { afwezigheid: afw, maxPerWeekend: +mx.value || 0 });
         YP.toast('Beschikbaarheid opgeslagen', 'ok'); load();
       } catch (e) { save.disabled = false; YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
     });
@@ -340,7 +340,7 @@
       var vv = Array.prototype.map.call(vHost.querySelectorAll('input:checked'), function (i) { return i.value; });
       var jj = Array.prototype.map.call(jHost.querySelectorAll('input:checked'), function (i) { return i.value; });
       try {
-        await YP.api.put('/api/resource/beschikbaarheid', { vakVoorkeuren: vv, voorkeurJaarlagen: jj, voorkeurVakkenVrij: vkVrij.slice() });
+        await YP.api.put('/api/begeleider/beschikbaarheid', { vakVoorkeuren: vv, voorkeurJaarlagen: jj, voorkeurVakkenVrij: vkVrij.slice() });
         YP.toast('Voorkeuren opgeslagen', 'ok'); load();
       } catch (e) { vSave.disabled = false; YP.toast(e.message || 'Opslaan mislukt', 'bad'); }
     });
@@ -427,11 +427,11 @@
         var taken = [];
         s.leerlingen.forEach(function (l) {
           if (st[l.id] !== (l.aanwezigheid || '')) {
-            taken.push(YP.api.post('/api/resource/aanwezigheid', { sessieId: s.id, leerlingId: l.id, status: st[l.id] }).then(function () { l.aanwezigheid = st[l.id]; }));
+            taken.push(YP.api.post('/api/begeleider/aanwezigheid', { sessieId: s.id, leerlingId: l.id, status: st[l.id] }).then(function () { l.aanwezigheid = st[l.id]; }));
           }
         });
         if ((notit.value || '') !== (s.notitie || '')) {
-          taken.push(YP.api.post('/api/resource/notitie', { sessieId: s.id, tekst: notit.value.trim() }).then(function () { s.notitie = notit.value.trim(); }));
+          taken.push(YP.api.post('/api/begeleider/notitie', { sessieId: s.id, tekst: notit.value.trim() }).then(function () { s.notitie = notit.value.trim(); }));
         }
         await Promise.all(taken);
         YP.toast('Opgeslagen', 'ok');
@@ -447,7 +447,7 @@
   async function load() {
     await YP.me;
     try {
-      data = await YP.api.get('/api/resource/mij');
+      data = await YP.api.get('/api/begeleider/mij');
       afw = ((data.resource || {}).afwezigheid || []).slice();
       vkVak = ((data.resource || {}).vakVoorkeuren || []).slice();
       vkJaar = ((data.resource || {}).voorkeurJaarlagen || []).slice();

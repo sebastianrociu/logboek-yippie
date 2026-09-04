@@ -57,7 +57,7 @@ op één rij boven het rooster.
   weigeren het (met een extra "toch doen"-bevestiging).
 - **Absenties.** Het sessievenster toont per leerling de aanwezigheid
   (aanwezig/afwezig/afgemeld) en de notitie die de begeleider heeft ingevuld -
-  alleen inzien; de begeleider vult ze in op `/resource/`.
+  alleen inzien; de begeleider vult ze in op `/begeleider/`.
 - **Afgemeld.** Een begeleider koppelen op een datum waarop die zich afmeldde kan,
   maar alleen na een extra waarschuwing.
 
@@ -101,7 +101,7 @@ Inlogaccounts voor mentoren/scholen en begeleiders (en extra beheerders).
 | Rol | Toegang |
 |---|---|
 | Beheerder (Yippie) | Alles hierboven. |
-| Begeleider | `/resource/`: afwezigheid en voorkeuren doorgeven, eigen rooster inzien, op de dag aanwezigheid + notitie per sessie. |
+| Begeleider | `/begeleider/`: afwezigheid en voorkeuren doorgeven, eigen rooster inzien, op de dag aanwezigheid + notitie per sessie. |
 | School/mentor | `/school/`: alleen-lezen overzicht van de eigen leerlingen - gevolgde vakken, sessies, aanwezigheid en de notities van de begeleider. |
 | Leerling/ouder | `/mijn/?token=...`: eigen indeling en rooster inzien en zich afmelden voor een sessie. Geen account; eerste keer wordt de naam ter controle gevraagd. |
 
