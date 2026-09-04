@@ -32,11 +32,12 @@
 }
 
 *{box-sizing:border-box;font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-/* scrollbar-gutter reserveert de baan zodat de pagina niet verspringt als de
-   scrollbar verschijnt/verdwijnt (o.a. bij het openen van een dialoog). */
-html{scrollbar-gutter:stable}
 html,body{height:100%;background:var(--bg);overflow-x:clip}
 body{color:var(--ink);min-height:100%;line-height:1.5;-webkit-font-smoothing:antialiased}
+/* Overlay-scrollbar (portaal-stijl): valt over de pagina, kost geen layout-ruimte,
+   dus geen witrand en geen verspringen. Op macOS is dat het OS-gedrag; het
+   webkit-baantje hieronder maakt 'm dun en halftransparent op alle platforms. */
+html{scrollbar-width:thin;scrollbar-color:rgba(120,130,145,.5) transparent}
 /* Geen achtergrond-scroll terwijl een dialoog open staat. */
 html:has(dialog[open]){overflow:hidden}
 ::selection{background:var(--coral-light);color:var(--coral-dark)}

@@ -1,30 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Achtergrond: coral square met afgeronde hoeken -->
-  <rect width="512" height="512" rx="112" fill="#E8735A"/>
-
-  <!-- Centrale open boek-vorm (Yippie merkbeeld) -->
-  <g transform="translate(256 226)">
+  <!-- Alleen het Yippie-boekmerk, coral, transparante achtergrond (geen randje). -->
+  <g transform="translate(256 256) scale(1.7)" fill="#E8735A">
     <!-- Linker pagina -->
-    <path d="M -120 -78 Q -118 -90 -106 -92 L -18 -98 Q -8 -98 -4 -88 L -4 78 Q -8 86 -18 84 L -106 78 Q -118 76 -120 64 Z"
-          fill="white" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M -120 -78 Q -118 -90 -106 -92 L -18 -98 Q -8 -98 -4 -88 L -4 78 Q -8 86 -18 84 L -106 78 Q -118 76 -120 64 Z"/>
     <!-- Rechter pagina -->
-    <path d="M 120 -78 Q 118 -90 106 -92 L 18 -98 Q 8 -98 4 -88 L 4 78 Q 8 86 18 84 L 106 78 Q 118 76 120 64 Z"
-          fill="white" stroke="#FFFFFF" stroke-width="2"/>
-    <!-- Boekrug schaduw -->
+    <path d="M 120 -78 Q 118 -90 106 -92 L 18 -98 Q 8 -98 4 -88 L 4 78 Q 8 86 18 84 L 106 78 Q 118 76 120 64 Z"/>
+    <!-- Boekrug -->
     <rect x="-6" y="-94" width="12" height="180" fill="#C95A43" rx="2"/>
     <!-- Tekstlijnen links -->
-    <rect x="-100" y="-60" width="80" height="6" rx="3" fill="#FDECEA"/>
-    <rect x="-100" y="-44" width="60" height="6" rx="3" fill="#FDECEA"/>
-    <rect x="-100" y="-28" width="70" height="6" rx="3" fill="#FDECEA"/>
-    <rect x="-100" y="-12" width="50" height="6" rx="3" fill="#FDECEA"/>
+    <rect x="-100" y="-60" width="80" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="-100" y="-44" width="60" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="-100" y="-28" width="70" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="-100" y="-12" width="50" height="6" rx="3" fill="#FFFFFF"/>
     <!-- Tekstlijnen rechts -->
-    <rect x="20" y="-60" width="80" height="6" rx="3" fill="#FDECEA"/>
-    <rect x="20" y="-44" width="60" height="6" rx="3" fill="#FDECEA"/>
-    <rect x="20" y="-28" width="70" height="6" rx="3" fill="#FDECEA"/>
-    <rect x="20" y="-12" width="50" height="6" rx="3" fill="#FDECEA"/>
+    <rect x="20" y="-60" width="80" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="20" y="-44" width="60" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="20" y="-28" width="70" height="6" rx="3" fill="#FFFFFF"/>
+    <rect x="20" y="-12" width="50" height="6" rx="3" fill="#FFFFFF"/>
   </g>
-
-  <!-- "YIPPIE" wordmark onderaan -->
-  <text x="256" y="430" font-family="Inter, Arial, sans-serif" font-size="62" font-weight="900"
-        text-anchor="middle" fill="white" letter-spacing="2">YIPPIE</text>
 </svg>

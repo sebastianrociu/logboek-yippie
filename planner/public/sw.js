@@ -5,7 +5,7 @@
    - /api/*: nooit cachen
    Bump CACHE bij een release; version-check.js merkt de nieuwe /api/version en
    toont een balk met een "Vernieuwen"-knop. */
-var CACHE = 'yp-planner-v11';
+var CACHE = 'yp-planner-v12';
 var PRECACHE = [
   '/', '/inschrijven/', '/mijn/', '/beheer/', '/resource/', '/school/',
   '/yp-design.css', '/vendor/tailwind.css', '/manifest.webmanifest',
