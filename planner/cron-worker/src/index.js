@@ -32,10 +32,14 @@ async function retentiePurge(env, now) {
   for (const id of wegIds) ins.tombstones[id] = now.getTime();
   ins._rev = (ins._rev || 0) + 1; ins._at = now.toISOString();
   await env.PLANNER_KV.put('inschrijvingen', JSON.stringify(ins));
+  let leegeSessies = new Set();
   const rraw = await env.PLANNER_KV.get('rooster');
   if (rraw) {
     const rooster = JSON.parse(rraw);
-    for (const s of (rooster.sessies || [])) s.leerlingIds = (s.leerlingIds || []).filter((x) => !wegIds.has(x));
+    for (const s of (rooster.sessies || [])) {
+      s.leerlingIds = (s.leerlingIds || []).filter((x) => !wegIds.has(x));
+      if (!s.leerlingIds.length) leegeSessies.add(s.id);
+    }
     rooster._rev = (rooster._rev || 0) + 1; rooster._at = now.toISOString();
     await env.PLANNER_KV.put('rooster', JSON.stringify(rooster));
   }
@@ -43,6 +47,8 @@ async function retentiePurge(env, now) {
   if (araw) {
     const aanw = JSON.parse(araw);
     for (const sid of Object.keys(aanw.perSessie || {})) for (const id of wegIds) delete aanw.perSessie[sid][id];
+    // notitie van een sessie die door de purge leeg raakte, mag ook weg
+    for (const sid of leegeSessies) if (aanw.notities) delete aanw.notities[sid];
     aanw._rev = (aanw._rev || 0) + 1; aanw._at = now.toISOString();
     await env.PLANNER_KV.put('aanwezigheid', JSON.stringify(aanw));
   }

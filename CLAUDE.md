@@ -16,9 +16,13 @@ De repo is gesplitst in twee mappen die niets van elkaar hoeven te weten:
   de live URL serveert nu vanaf `/logboek/`.)
 - **`planner/`** - het **plannings- en inschrijfsysteem** (werkgeveropdracht
   `opdracht-planningssysteem-yippie.md`). Aparte stack: Cloudflare Pages + één
-  Worker, KV, vanilla HTML/JS per pagina, PWA. Fase 1 (MVP) staat er. Eigen
-  documentatie in `planner/docs/` en `planner/README.md`. Deelt de designtaal
-  (coral portaal-stijl) via `planner/public/yp-design.css`.
+  Worker, KV, vanilla HTML/JS per pagina, PWA. Fase 1 (MVP) plus een brede
+  UX-ronde: begeleider-beschikbaarheid omgedraaid (standaard beschikbaar,
+  `afwezigheid[]` = kan niet), begeleider aanmaken in één stap met inloglink en
+  cijferlijst-match, sleepbare planning met dubbelboeking-guard, notities per
+  sessie, lichte identiteitscheck op `/mijn`. Eigen documentatie in
+  `planner/docs/` en `planner/README.md`. Deelt de designtaal (coral
+  portaal-stijl) via `planner/public/yp-design.css`.
 
 De rest van dit bestand beschrijft **alleen het logboek**.
 

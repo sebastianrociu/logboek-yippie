@@ -22,12 +22,20 @@ Logboek Yippie** (`https://claude.ai/code/artifact/7d35c06d-eeb4-4b20-8a0c-9a48a
 | School, niveau, leerjaar, vak(ken), periodevoorkeur, traject | `inschrijvingen` | roosteren |
 | Vrije toelichting (max 500) | `inschrijvingen` | planningswensen |
 | Rooster: sessie -> leerling- id's, begeleider, datum, locatie | `rooster` | de planning |
-| Aanwezigheid per sessie per leerling | `aanwezigheid` | fase 3 |
+| Aanwezigheid per sessie per leerling | `aanwezigheid` | terugkoppeling naar school |
+| Notitie per sessie (kort verslag van de begeleider) | `aanwezigheid.notities` | terugkoppeling naar school |
 | Inlogaccounts (mentor, begeleider, beheer): e-mail, rol, PBKDF2-hash | `users` | toegang |
 
 **Niet opgeslagen:** geen leerlingnummer, geen BSN, geen adres, geen
 geboortedatum. De persoonlijke link gebruikt een 128-bit token; de server bewaart
-alleen de **SHA-256-hash** daarvan, nooit het token zelf.
+alleen de **SHA-256-hash** daarvan, nooit het token zelf. De lichte
+identiteitscheck op `/mijn` (de eerste keer de naam van de leerling bevestigen)
+slaat **niets nieuws** op: hij vergelijkt met de al opgeslagen `leerling.naam` en
+de browser onthoudt lokaal dat het is gelukt. Het token blijft de feitelijke
+toegang; de check is een extra drempel, geen authenticatie.
+
+Notities horen **feitelijk en over schoolwerk** te zijn (zelfde lijn als het
+logboek): geen oordelen over gedrag of thuissituatie. De school ziet ze mee.
 
 ## Toegang (need-to-know), server-side afgedwongen
 
@@ -48,7 +56,8 @@ mislukte pogingen per account / 15 min -> `429`).
 
 - **Bewaartermijn:** `config.instellingen.bewaarMaanden` (standaard 18). De
   cron-worker verwijdert `geannuleerd`/`afgerond` inschrijvingen ouder dan die
-  termijn, inclusief cascade uit `rooster` en `aanwezigheid`.
+  termijn, inclusief cascade uit `rooster` en `aanwezigheid` (aanwezigheidsstatus
+  én de notitie van een sessie die daardoor leeg raakt).
 - **Eén inschrijving nu wissen:** Beheer -> Inschrijvingen -> bij de leerling
   "Wissen" (dubbele bevestiging). Wist de inschrijving definitief en haalt de
   leerling uit alle sessies en de aanwezigheid.

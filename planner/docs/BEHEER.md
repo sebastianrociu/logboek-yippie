@@ -7,8 +7,9 @@ blokken, begeleiders of accounts.
 ## Tabbladen
 
 ### Inschrijvingen
-Alle binnengekomen inschrijvingen, gegroepeerd op **school -> jaarlaag** (klik een
-jaarlaag open/dicht). Bovenaan staat een **Aandacht**-strook met de punten die
+Alle binnengekomen inschrijvingen, **inklapbaar per school** (open/dicht wordt
+onthouden; de kop toont het aantal en hoeveel aandacht nodig hebben) en daarin
+gegroepeerd op jaarlaag. Bovenaan staat een **Aandacht**-strook met de punten die
 eerst moeten: een vrij ingetypte school die nog gekoppeld moet worden, een
 inschrijving zonder gekoppelde jaarlaag, een vak dat niet in de vakkenlijst
 staat, of een leerling die (nog) in geen sessie zit. Per inschrijving zie je het
@@ -36,19 +37,29 @@ Het hart van fase 1.
 - **Knelpunten.** Gegroepeerd op ernst (Los eerst op / Aandacht / Klein), met een
   pijl-knop die naar de plek springt om het op te lossen.
 - **Weekrooster.** Kies een blok; de kolommen zijn de weekenddatums, met een
-  ochtend- en middagvak per dag. Elke sessie is een blokje met vak, jaarlaag,
-  school, begeleider en de bezetting. Klik een blokje voor datum, locatie,
-  begeleider en de leerlingen. Een sessie zonder datum staat in de balk **Nog te
-  plannen**; tik 'm aan en klik daarna een geldig vak in het rooster.
-- **Buiten beschikbaarheid.** Een begeleider koppelen op een datum waarop die zich
-  niet beschikbaar meldde kan, maar alleen na een extra waarschuwing.
+  ochtend- en middagrij per dag. Elke sessie is een compacte chip met vak, een
+  E/B-pill (examentraining of bijspijker), de jaarlaag, de begeleider en de
+  bezetting. **Sleep** een chip naar een ander dagdeel (werkt met muis en op
+  touch): groen = kan hier, rood = zelfde begeleider al bezet of andere
+  weekenddag. Klik een chip voor datum, locatie, begeleider en leerlingen. Filter
+  op school of traject als er veel sessies tegelijk lopen; een tijdvak met 10+
+  sessies scrollt binnen de cel. Een sessie zonder datum staat in de balk **Nog te
+  plannen**; sleep 'm, of tik 'm aan en klik daarna een cel.
+- **Dubbelboeking.** Een begeleider komt nooit op twee sessies tegelijk (zelfde
+  datum + dagdeel): de generator vermijdt het, slepen en het sessievenster
+  weigeren het (met een extra "toch doen"-bevestiging).
+- **Afgemeld.** Een begeleider koppelen op een datum waarop die zich afmeldde kan,
+  maar alleen na een extra waarschuwing.
 
 ### Begeleiders
-Docenten, trainers en ondersteuners. Per begeleider: naam, e-mail, welke vakken
-en jaarlagen die kan bedienen, de **vakvoorkeuren** (wat die het liefst geeft) en
-het maximum aantal sessies per weekend. De **beschikbaarheid** is hier alleen-
-lezen: normaal vult de begeleider die zelf in via de eigen inlog. Aanpassen kan
-na "Wijzig beschikbaarheid" en een extra bevestiging.
+Docenten, trainers en ondersteuners. Nieuwe begeleiders maak je aan bij
+**Accounts** (het trainerprofiel ontstaat meteen mee). Hier stel je per begeleider
+in: naam, e-mail, welke **vakken** en **jaarlagen** die kan bedienen en het
+maximum aantal sessies per weekend. De **voorkeuren** (liefste vakken, liefste
+jaarlagen, een gewenst vak dat niet in de lijst staat) zijn hier **alleen-inzien**
+met een slotje - de begeleider beheert die zelf. De **afwezigheid** ("kan niet
+op ...") is klein en alleen-lezen; aanpassen kan alleen na een onopvallende
+ontgrendeling met dubbele bevestiging.
 
 ### Scholen en vakken
 De beheerbare lijsten: scholen, vakken, jaarlagen, blokken en de minimale/
@@ -60,23 +71,26 @@ niet in de lijst staat; komt dat vaker voor, voeg het dan hier toe.
 
 ### Accounts
 Inlogaccounts voor mentoren/scholen en begeleiders (en extra beheerders).
+- Rol **Begeleider**: één stap. Je vult naam en e-mail in en kent vakken en
+  jaarlagen toe - met de hand of via **"Voorstel uit cijferlijst"** (vink de
+  vakken aan met niveau havo/vwo en of ze zijn afgerond; Yippie stelt vakken en
+  jaarlagen voor, die je daarna bijstelt). Het trainerprofiel ontstaat meteen mee;
+  je hoeft niet apart bij Begeleiders iets aan te maken.
 - Rol **Mentor/school**: koppel aan één school. Die persoon ziet uitsluitend de
   leerlingen van die school, alleen-lezen.
-- Rol **Begeleider**: koppel aan een begeleider uit het tabblad Begeleiders. Die
-  persoon beheert de eigen beschikbaarheid en ziet het eigen rooster.
-- Toegang geven kan op twee manieren: een **persoonlijke inloglink** (30 dagen
-  geldig; knop "Inloglink" per account, of het venster dat na aanmaken opent) of
-  het **tijdelijke wachtwoord**. Stuur er een door. Een echte uitnodigingsmail
-  volgt met de Gmail-koppeling.
+- **Wachtwoord is optioneel.** Laat je het leeg, dan logt de persoon in via de
+  **persoonlijke inloglink** (30 dagen geldig; knop "Inloglink" per account, of
+  het venster dat na aanmaken opent). Vul je wel een wachtwoord in, dan kan dat
+  ook. Stuur er een door. Een echte uitnodigingsmail volgt met de Gmail-koppeling.
 
 ## Rollen en wat ze zien
 
 | Rol | Toegang |
 |---|---|
 | Beheerder (Yippie) | Alles hierboven. |
-| Begeleider | `/resource/`: eigen beschikbaarheid bijwerken, eigen rooster inzien. |
-| School/mentor | `/school/`: alleen-lezen overzicht van de eigen leerlingen (deelname; aanwezigheid volgt in fase 3). |
-| Leerling/ouder | `/mijn/?token=...`: eigen indeling inzien en zich afmelden voor een sessie. Geen account nodig. |
+| Begeleider | `/resource/`: afwezigheid en voorkeuren doorgeven, eigen rooster inzien, op de dag aanwezigheid + notitie per sessie. |
+| School/mentor | `/school/`: alleen-lezen overzicht van de eigen leerlingen - gevolgde vakken, sessies, aanwezigheid en de notities van de begeleider. |
+| Leerling/ouder | `/mijn/?token=...`: eigen indeling en rooster inzien en zich afmelden voor een sessie. Geen account; eerste keer wordt de naam ter controle gevraagd. |
 
 De scheiding wordt **server-side** afgedwongen: een mentor-request krijgt nooit
 data van een andere school, ook niet met een aangepaste URL.

@@ -45,11 +45,13 @@ aangeboden. Leerlingen kiezen per blok een dag en dagdeel.
     "id": "res_1",
     "naam": "K. Jansen",
     "email": "trainer@yippie.test",
-    "vakIds": ["vak_wi", "vak_na"],
-    "vakVoorkeuren": ["vak_wi"],
-    "jaarlaagIds": ["jl_3h", "jl_4v"],
+    "vakIds": ["vak_wi", "vak_na"],          // wat beheer toekent (kan het vak)
+    "jaarlaagIds": ["jl_3h", "jl_4v"],       // wat beheer toekent (kan de jaarlaag)
+    "vakVoorkeuren": ["vak_wi"],             // trainer-eigen: geeft het liefst
+    "voorkeurJaarlagen": ["jl_4v"],          // trainer-eigen: jaarlaag-voorkeur
+    "voorkeurVakVrij": "wiskunde D",         // trainer-eigen: gewenst vak dat niet in de lijst staat
     "maxPerWeekend": 3,
-    "beschikbaarheid": [{ "datum": "2027-01-17", "dagdeel": "ochtend" }]
+    "afwezigheid": [{ "datum": "2027-01-17", "dagdeel": "ochtend" }]
   }],
   "tombstones": { "res_9": 1730000000000 }
 }
@@ -57,6 +59,23 @@ aangeboden. Leerlingen kiezen per blok een dag en dagdeel.
 
 `tombstones` markeert verwijderde ids zodat een gelijktijdige merge ze niet
 terugzet.
+
+**Beschikbaarheid is omgedraaid.** Een begeleider is standaard beschikbaar op elk
+trainingsdagdeel; `afwezigheid[]` bevat de `{datum,dagdeel}` waarop die **niet**
+kan. `beschikbaarOp()` in `_worker.js` = "niet in `afwezigheid`". Het oude opt-in
+`beschikbaarheid`-veld wordt niet meer gebruikt of geschreven (er was geen live
+data; dev-KV is resetbaar, dus geen bulk-migratie).
+
+**Rechten.** `PUT /api/beheer/resources` laat beheer alleen `naam`, `email`,
+`vakIds`, `jaarlaagIds` en `maxPerWeekend` wijzigen. `vakVoorkeuren`,
+`voorkeurJaarlagen` en `voorkeurVakVrij` kan beheer **nooit** overschrijven
+(alleen de begeleider via `PUT /api/resource/beschikbaarheid`). `afwezigheid`
+overschrijft beheer alleen als het request `staAfwezigheidToe: true` meestuurt
+(UI: na een expliciete ontgrendeling met dubbele bevestiging).
+
+Een begeleider ontstaat nu samen met het account: `POST /api/beheer/users` met
+`rol: "resource"` en zonder `resourceId` maakt de `resources`-entry aan
+(optioneel met `vakIds`/`jaarlaagIds` uit de cijferlijst-match) en koppelt hem.
 
 ## `inschrijvingen`
 
@@ -128,9 +147,12 @@ blijft de weekenddag. `PUT /api/beheer/rooster` vervangt de sessies volledig
 bevestigDefinitief?}`) draait de greedy one-pass: bundel -> splits > `groepMax` ->
 sorteer op schaarste -> wijs de begeleider met de meeste resterende
 weekend-capaciteit toe die het vak/de jaarlaag kan en op datum+dagdeel
-beschikbaar is (`vakVoorkeuren` als zachte tiebreak). `GET
-/api/beheer/rooster/analyse` geeft dezelfde knelpunten + groep-info voor het
-huidige rooster, zonder toe te wijzen. `conflicten` zijn nu objecten met
+beschikbaar is (niet in `afwezigheid`), met `vakVoorkeuren` en `voorkeurJaarlagen`
+als zachte tiebreak. De generator zet **nooit** twee sessies bij dezelfde
+begeleider op hetzelfde `datum`+`dagdeel`; de UI weigert dat ook bij slepen en in
+het sessievenster, en `analyse` geeft er een `trainer-dubbel`-knelpunt (hoog) op.
+`GET /api/beheer/rooster/analyse` geeft dezelfde knelpunten + groep-info voor het
+huidige rooster, zonder toe te wijzen. `conflicten` zijn objecten met
 `severity` (`hoog`/`midden`/`laag`) en een `ref` naar de plek om het op te lossen.
 
 `GET /api/mijn` en `GET /api/school/overzicht` tonen sessies pas als
@@ -160,13 +182,34 @@ eerste geslaagde login met dat adres. Inloggen kan met wachtwoord (`POST
 /api/login`) of met een persoonlijke inloglink (`POST /api/auth/link`, aangeroepen
 door `/?login=<token>` op de landingspagina).
 
-## `aanwezigheid` (fase 3, nu leeg geïnitialiseerd)
+**Wachtwoord is optioneel.** `POST /api/beheer/users` zonder `wachtwoord` maakt een
+account zonder `salt`/`hash`: inloggen kan dan alleen via de persoonlijke
+inloglink. `POST /api/login` op zo'n account geeft een nette melding ("gebruik je
+inloglink").
+
+## `aanwezigheid`
 
 ```jsonc
-{ "_rev": 0, "perSessie": { "<sessieId>": { "<leerlingId>": "aanwezig" } } }
+{
+  "_rev": 0,
+  "perSessie": { "<sessieId>": { "<leerlingId>": "aanwezig" } },
+  "notities":  { "<sessieId>": { "tekst": "kort verslag", "ts": "2026-11-07T..." } }
+}
 ```
 
-Waarden: `aanwezig` | `afwezig` | `afgemeld`.
+Aanwezigheidswaarden: `aanwezig` | `afwezig` | `afgemeld`. De begeleider zet ze
+per leerling (`POST /api/resource/aanwezigheid`) en schrijft één notitie per
+sessie (`POST /api/resource/notitie`, leeg = wissen, max 1000 tekens). Beheer en
+de school lezen de notitie mee (`/api/school/overzicht`); de begeleider ziet de
+eigen notitie terug in `/api/resource/mij`.
+
+## Persoonlijke pagina leerling/ouder
+
+`GET /api/mijn?token=` geeft de indeling voor een geldig link-token.
+`POST /api/mijn/verifieer` `{token, naam}` is de **lichte identiteitscheck**: de
+opgegeven naam moet (genormaliseerd) kloppen met `leerling.naam`; bij een match
+komt dezelfde payload terug. Er wordt niets extra opgeslagen; de client onthoudt
+lokaal (`localStorage`) dat het is gelukt en slaat de vraag daarna over.
 
 ## `backup:<jjjj-mm-dd>` (door de cron-worker)
 
