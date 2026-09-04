@@ -48,17 +48,15 @@
             </div>
           </div>
         </div>
-        <div class="split2" style="margin-top:14px">
-          <div class="field hidden" id="f-leerjaar-field" style="margin-bottom:0">
-            <label>Leerjaar</label>
-            <div class="seg" id="f-leerjaar" role="radiogroup" aria-label="Leerjaar"></div>
-          </div>
-          <div class="field hidden" id="f-traject-field" style="margin-bottom:0">
-            <label>Wat voor traject?</label>
-            <div class="seg" id="f-traject" role="radiogroup" aria-label="Traject">
-              <label><input type="radio" name="traject" value="examentraining"><span>Examentraining</span></label>
-              <label><input type="radio" name="traject" value="bijspijker"><span>Bijspijkertraject</span></label>
-            </div>
+        <div class="field hidden" id="f-leerjaar-field" style="margin-top:18px;margin-bottom:0">
+          <label>In welk leerjaar zit je?</label>
+          <div class="seg seg-lg" id="f-leerjaar" role="radiogroup" aria-label="Leerjaar"></div>
+        </div>
+        <div class="field hidden" id="f-traject-field" style="margin-top:16px;margin-bottom:0">
+          <label>Wat voor traject?</label>
+          <div class="seg" id="f-traject" role="radiogroup" aria-label="Traject">
+            <label><input type="radio" name="traject" value="examentraining"><span>Examentraining</span></label>
+            <label><input type="radio" name="traject" value="bijspijker"><span>Bijspijkertraject</span></label>
           </div>
         </div>
         <p class="hint hidden" id="f-traject-line" style="margin-top:8px"></p>
@@ -66,11 +64,12 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>2. Blokken, dagen en vakken</h2></div>
+      <div class="card-head"><h2>2. Beschikbaarheid en voorkeur</h2></div>
       <div class="card-pad">
         <p class="hint" style="margin:0 0 14px">
-          Vink de blokken aan waarin je meedoet. Per blok kies je een of meer momenten
-          (bijvoorbeeld zaterdagochtend en zondagmiddag) en de vakken.
+          Vink de blokken aan waarin je meedoet. Geef per blok aan wanneer je zou kunnen
+          (hele dagen mogen ook) en welke vakken je wilt. Dit is je voorkeur; Yippie maakt
+          er daarna de definitieve indeling van.
         </p>
         <div class="stack" id="f-blokken"></div>
       </div>
@@ -93,7 +92,7 @@
             <div class="field"><label for="f-ot">Telefoon</label><input class="input" id="f-ot" inputmode="tel"></div>
           </div>
         </div>
-        <p class="hint" style="margin-bottom:14px">Vul minstens een e-mailadres in (leerling of ouder). Daar sturen we de indeling naartoe.</p>
+        <p class="hint" style="margin-bottom:14px">Vul minstens een e-mailadres in (leerling of ouder). Op dat adres ontvang je je indeling en later je rooster.</p>
 
         <div class="subcard">
           <h3>Mentor of contactpersoon op school</h3>
@@ -105,8 +104,8 @@
         </div>
 
         <div class="field" style="margin-top:16px;margin-bottom:0">
-          <label for="f-toelichting">Toelichting (niet verplicht)</label>
-          <textarea id="f-toelichting" maxlength="500" placeholder="Bijvoorbeeld: niet beschikbaar op 20 december, of alleen de eerste helft van een blok."></textarea>
+          <label for="f-toelichting">Bijzonderheden voor de planning (niet verplicht)</label>
+          <textarea id="f-toelichting" maxlength="500" placeholder="Bijvoorbeeld: niet beschikbaar op 20 december, alleen de eerste helft van een blok, of samen ingedeeld willen worden met een klasgenoot."></textarea>
         </div>
       </div>
     </div>
@@ -117,13 +116,14 @@
     </div>
 
     <p class="err hidden" id="f-err"></p>
-    <button type="submit" class="btn btn-primary btn-block" id="f-submit">Inschrijving versturen</button>
+    <button type="submit" class="btn btn-cta" id="f-submit">Inschrijving versturen</button>
   </form>
 
   <div id="done" class="card card-pad hidden">
     <span class="badge ok">Gelukt</span>
     <h2 style="margin-top:10px">Je inschrijving is binnen</h2>
-    <p class="card-sub">Bewaar je persoonlijke link. Daarmee zie je straks je indeling en kun je je afmelden voor een sessie.</p>
+    <p class="card-sub">Bewaar je persoonlijke link goed. Met diezelfde link zie je straks je rooster
+      en kun je je afmelden voor een sessie. De indeling komt ook naar je e-mailadres.</p>
     <div id="done-sum" class="notice info" style="margin-top:12px"></div>
     <div class="field" style="margin-top:12px">
       <label for="d-link">Jouw persoonlijke link</label>
@@ -142,10 +142,10 @@
     <p class="dsub">Voor leerling en ouder. Inloggen hoeft niet.</p>
     <ol class="intro-steps">
       <li><b>School en niveau.</b> Typ je school (ook een afkorting werkt) en kies je niveau en leerjaar.</li>
-      <li><b>Blokken en vakken.</b> Kies per blok een dag, ochtend of middag, en je vak(ken).</li>
+      <li><b>Beschikbaarheid en voorkeur.</b> Geef per blok aan wanneer je zou kunnen en welke vakken je wilt. Yippie maakt er de indeling van.</li>
       <li><b>Contactgegevens.</b> Vul een e-mailadres van de leerling of ouder in. Daar komt de indeling.</li>
     </ol>
-    <p class="intro-note">Na versturen krijg je een <b>persoonlijke link</b>. Bewaar die goed. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
+    <p class="intro-note">Na versturen krijg je een <b>persoonlijke link</b>. Daarmee zie je later ook je rooster, dus bewaar 'm goed. Deze uitleg staat altijd onder <b>?</b> rechtsboven.</p>
     <div class="dlg-actions">
       <button type="button" class="btn btn-primary btn-sm" data-close>Beginnen</button>
     </div>
@@ -252,7 +252,7 @@
     var body = YP.el('div', { class: 'bc-body', hidden: 'hidden' });
 
     // week-widget: dagen als kolommen, ochtend/middag als rijen. Meerdere momenten mag.
-    var wkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Welke momenten in dit blok? (meerdere mag)' })]);
+    var wkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Wanneer zou je kunnen? (meerdere mag, hele dagen ook)' })]);
     var wk = YP.el('div', { class: 'weekgrid' });
     dagen.forEach(function (d) {
       var col = YP.el('div', { class: 'weekcol' }, [YP.el('div', { class: 'wc-day', text: DAGNAAM[d] })]);
@@ -269,7 +269,7 @@
     body.appendChild(wkField);
 
     // vakken: alle bekende vakken + zelf toevoegen
-    var vkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Vakken voor dit blok' })]);
+    var vkField = YP.el('div', { class: 'field' }, [YP.el('label', { text: 'Welke vakken wil je in dit blok?' })]);
     var vkSet = YP.el('div', { class: 'chipset', 'data-role': 'vakken' });
     (cfg.vakken || []).forEach(function (v) { vkSet.appendChild(vakChip(v.naam)); });
     vkField.appendChild(vkSet);

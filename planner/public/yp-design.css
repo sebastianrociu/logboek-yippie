@@ -172,6 +172,9 @@ textarea{resize:vertical;min-height:84px;line-height:1.55}
 .seg span:hover{background:rgba(232,115,90,.08)}
 .seg input:checked + span{background:var(--coral);color:#fff;box-shadow:var(--sh-btn)}
 .seg input:focus-visible + span{outline:2px solid var(--coral);outline-offset:2px}
+/* Grote variant: prominente keuze (bv. leerjaar op het inschrijfformulier) */
+.seg.seg-lg{gap:6px;padding:5px}
+.seg.seg-lg span{padding:12px 22px;font-size:15px;font-weight:800;min-width:46px;text-align:center}
 
 /* Horizontale "week": dagen als kolommen, dagdelen als rijen. Radio per cel. */
 .weekgrid{display:grid;grid-auto-flow:column;gap:10px;overflow-x:auto;padding-bottom:4px;max-width:100%}
