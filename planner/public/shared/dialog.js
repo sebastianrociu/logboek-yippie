@@ -13,6 +13,11 @@
       el.setAttribute('aria-live', 'polite');
       el.setAttribute('popover', 'manual');
       el.innerHTML = '<span class="ti"></span><span class="tt"></span>';
+      // Klik op de melding laat 'm vervagen.
+      el.addEventListener('click', function () {
+        el.classList.remove('show');
+        setTimeout(function () { if (el.hidePopover) { try { el.hidePopover(); } catch (e) {} } }, 200);
+      });
       document.body.appendChild(el);
     }
     return el;

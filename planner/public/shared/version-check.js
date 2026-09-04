@@ -21,15 +21,9 @@
     knop.className = 'btn btn-primary';
     knop.textContent = 'Vernieuwen';
     knop.addEventListener('click', function () { location.reload(); });
-    var sluit = document.createElement('button');
-    sluit.type = 'button';
-    sluit.className = 'ub-x';
-    sluit.setAttribute('aria-label', 'Later');
-    sluit.innerHTML = YP.icon ? YP.icon('close', { size: 16 }) : '×';
-    sluit.addEventListener('click', function () { bar.remove(); });
+    // Bewust geen sluitknop: een nieuwe versie hoort gewoon geladen te worden.
     bar.appendChild(tekst);
     bar.appendChild(knop);
-    bar.appendChild(sluit);
     document.body.appendChild(bar);
   }
 
