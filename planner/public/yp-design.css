@@ -447,31 +447,29 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .hidden{display:none!important}
 .mono{font-variant-numeric:tabular-nums}
 
-/* ===== Afdrukken / pdf (formeel rapport, geen schermchrome) ======== */
+/* ===== Afdrukken / pdf (formeel Yippie-rapport) ==================== */
 .print-sheet{display:none}
 @media print{
-  @page{margin:18mm 16mm}
-  html,body{background:#fff;color:#000}
-  .topbar,.ro-banner,.tabs,dialog,.toast,.update-bar,.no-print,
-  button,.btn,.hdr-actions,#yp-toast{display:none!important}
-  .wrap{padding:0!important;max-width:none!important}
-  .card{box-shadow:none!important;border:none!important;border-radius:0!important;animation:none!important;page-break-inside:avoid}
-  .card > .card-head{border-bottom:1px solid #000;padding:0 0 6px}
-  .card-pad{padding:0}
-  .welkom{display:none!important}
-  .print-sheet{display:block}
-  .print-sheet .ps-head{display:flex;justify-content:space-between;align-items:flex-start;
-    border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:18px}
-  .print-sheet .ps-brand{font-weight:800;font-size:16px;letter-spacing:.02em}
-  .print-sheet .ps-meta{font-size:11px;color:#333;text-align:right}
-  .print-sheet h1{font-size:18px;margin:0 0 2px}
-  .print-sheet table{width:100%;border-collapse:collapse;font-size:11px;margin:10px 0 20px}
-  .print-sheet th{text-align:left;border-bottom:1px solid #000;padding:5px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
-  .print-sheet td{border-bottom:1px solid #ccc;padding:5px 6px;vertical-align:top}
-  .print-sheet .ps-leerling{page-break-inside:avoid;margin-bottom:14px}
-  .print-sheet .ps-leerling h2{font-size:13px;margin:0 0 2px;border-bottom:1px solid #000;padding-bottom:2px}
-  .print-sheet .ps-sub{font-size:10px;color:#333;margin-bottom:4px}
-  .print-sheet .ps-foot{margin-top:24px;font-size:10px;color:#555;border-top:1px solid #ccc;padding-top:6px}
+  @page{margin:16mm 15mm}
+  html,body{background:#fff;color:#1A1A1A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body > *{display:none!important}
+  body > .print-sheet{display:block!important}
+  .print-sheet{font-size:11px;line-height:1.5}
+  .print-sheet .ps-head{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:3px solid #E8735A;padding-bottom:10px;margin-bottom:20px}
+  .print-sheet .ps-brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:#C95A43;letter-spacing:.02em}
+  .print-sheet .ps-brand svg{width:22px;height:22px}
+  .print-sheet h1{font-size:19px;margin:6px 0 0;color:#1A1A1A;letter-spacing:-.01em}
+  .print-sheet .ps-meta{font-size:10px;color:#6B7280;text-align:right;line-height:1.6}
+  .print-sheet .ps-leerling{page-break-inside:avoid;margin-bottom:16px;padding-bottom:4px}
+  .print-sheet .ps-leerling h2{font-size:13px;margin:0;padding:5px 10px;background:#FDECEA;color:#C95A43;border-radius:6px}
+  .print-sheet .ps-sub{font-size:10px;color:#4B5563;margin:5px 0 3px;padding:0 2px}
+  .print-sheet table{width:100%;border-collapse:collapse;font-size:10.5px;margin:6px 0 4px}
+  .print-sheet thead th{text-align:left;background:#F2F2F7;color:#4B5563;padding:5px 8px;
+    font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid #E8735A}
+  .print-sheet tbody td{padding:5px 8px;border-bottom:1px solid #E6E9EF;vertical-align:top}
+  .print-sheet tbody tr:nth-child(even) td{background:#FAFAFC}
+  .print-sheet .ps-foot{margin-top:22px;font-size:9px;color:#8E8E93;border-top:1px solid #E6E9EF;padding-top:6px}
 }
 
 @media(max-width:560px){

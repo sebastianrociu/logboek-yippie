@@ -58,6 +58,8 @@
   function langDatum(iso) { var t = Date.parse(iso + 'T00:00:00Z'); if (isNaN(t)) return iso; return new Date(t).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }); }
   function sTijd(s) { return s.van && s.tot ? s.van + '-' + s.tot : (DDNAAM[s.dagdeel] || s.dagdeel); }
 
+  var gekozen = {}; // leerlingnaam -> aangevinkt voor printen
+
   function render(zoek) {
     listHost.innerHTML = '';
     var lijst = alle;
@@ -68,37 +70,56 @@
     var jaren = Object.keys(perJaar).sort();
     if (!jaren.length) { listHost.appendChild(YP.el('div', { class: 'card card-pad' }, [YP.el('div', { class: 'empty', text: zoek ? 'Geen leerling gevonden.' : 'Nog geen inschrijvingen van je school.' })])); return; }
 
-    jaren.forEach(function (jr) {
-      var card = YP.el('div', { class: 'card', style: 'margin-bottom:14px' });
-      card.appendChild(YP.el('div', { class: 'card-head' }, [YP.el('h2', { text: jr + '  (' + perJaar[jr].length + ')' })]));
-      var list = YP.el('div', { class: 'list', style: 'padding:4px 14px 10px' });
+    jaren.forEach(function (jr, i) {
+      var fold = YP.el('details', { class: 'fold' });
+      if (i === 0 || zoek) fold.setAttribute('open', 'open');
+      var sum = YP.el('summary', { text: jr });
+      sum.appendChild(YP.el('span', { class: 'fold-count', text: perJaar[jr].length + ' leerling(en)' }));
+      fold.appendChild(sum);
+      var body = YP.el('div', { class: 'fold-body tight' });
+
       perJaar[jr].sort(function (a, b) { return a.leerling < b.leerling ? -1 : 1; }).forEach(function (l) {
         var vakLijst = (l.vakkenGevolgd && l.vakkenGevolgd.length) ? l.vakkenGevolgd : l.vakken;
         var sub = [];
         if (vakLijst.length) sub.push(vakLijst.join(', '));
         sub.push(l.ingedeeld ? l.ingedeeld + ' sessie(s)' : 'nog niet ingedeeld');
         if (l.aanwezigheid && l.aanwezigheid.afwezig) sub.push(l.aanwezigheid.afwezig + 'x afwezig');
-        var row = YP.el('button', { class: 'list-row', type: 'button', style: 'width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--divider);cursor:pointer' }, [
-          YP.el('span', { class: 'lr-main' }, [
-            YP.el('span', { class: 'lr-title', text: l.leerling }),
-            YP.el('span', { class: 'lr-sub', text: sub.join('  -  ') })
-          ]),
+
+        var cb = YP.el('input', { type: 'checkbox', style: 'width:16px;height:16px;accent-color:var(--coral);flex-shrink:0' });
+        cb.checked = !!gekozen[l.leerling];
+        cb.addEventListener('click', function (e) { e.stopPropagation(); });
+        cb.addEventListener('change', function () { gekozen[l.leerling] = cb.checked; syncPrintKnop(); });
+
+        var open = YP.el('button', { class: 'lr-main', type: 'button', style: 'flex:1;min-width:0;text-align:left;background:none;border:0;cursor:pointer;padding:0' }, [
+          YP.el('span', { class: 'lr-title', text: l.leerling }),
+          YP.el('span', { class: 'lr-sub', text: sub.join('  -  ') })
+        ]);
+        open.addEventListener('click', function () { leerlingDialog(l); });
+
+        var row = YP.el('div', { class: 'list-row tight' }, [
+          cb, open,
           YP.el('span', { class: 'badge ' + (l.status === 'geannuleerd' ? 'bad' : l.status === 'ingepland' ? 'neutral' : 'warn'), text: l.status }),
           YP.el('span', { style: 'color:var(--chev);display:flex', html: ico('chevron-right', { size: 16 }) })
         ]);
-        row.addEventListener('click', function () { leerlingDialog(l); });
-        list.appendChild(row);
+        body.appendChild(row);
       });
-      card.appendChild(list);
-      listHost.appendChild(card);
+      fold.appendChild(body);
+      listHost.appendChild(fold);
     });
+  }
+
+  function syncPrintKnop() {
+    var n = Object.keys(gekozen).filter(function (k) { return gekozen[k]; }).length;
+    var b = document.getElementById('printSel');
+    if (b) { b.style.display = n ? 'inline-flex' : 'none'; b.textContent = 'Print selectie (' + n + ')'; }
   }
 
   function leerlingDialog(l) {
     var dlg = document.createElement('dialog');
     dlg.style.maxWidth = '560px';
     dlg.innerHTML = '<div class="dlg"><h3></h3><p class="dsub"></p><div class="db"></div>' +
-      '<div class="dlg-actions"><button type="button" class="btn btn-primary btn-sm" data-close>Sluiten</button></div></div>';
+      '<div class="dlg-actions"><button type="button" class="btn btn-ghost btn-sm" id="ld-print">Deze leerling afdrukken</button>' +
+      '<button type="button" class="btn btn-primary btn-sm" data-close>Sluiten</button></div></div>';
     dlg.querySelector('h3').textContent = l.leerling;
     dlg.querySelector('.dsub').textContent = [l.jaarlaag, TRAJ[l.traject] || l.traject, l.mentor ? 'mentor ' + l.mentor : ''].filter(Boolean).join('  -  ');
     var db = dlg.querySelector('.db');
@@ -169,35 +190,39 @@
 
     document.body.appendChild(dlg);
     dlg.querySelector('[data-close]').addEventListener('click', function () { dlg.close(); });
+    dlg.querySelector('#ld-print').addEventListener('click', function () { dlg.close(); printMet([l.leerling]); });
     dlg.addEventListener('close', function () { dlg.remove(); });
     dlg.showModal();
   }
 
-  // ---- formeel afdruk-/pdf-sjabloon --------------------------------------
-  function bouwPrintSheet() {
+  // ---- formeel Yippie-afdruk-/pdf-sjabloon -----------------------------
+  function bouwPrintSheet(namenFilter) {
     var host = document.getElementById('printSheet');
     host.innerHTML = '';
+    var boek = '<svg viewBox="0 0 24 24" fill="#E8735A"><path d="M4 4h7v16H5a1 1 0 0 1-1-1V4zm9 0h7v15a1 1 0 0 1-1 1h-6V4z"/></svg>';
     var nu = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+    var set = alle.filter(function (l) { return !namenFilter || namenFilter.indexOf(l.leerling) !== -1; });
     host.appendChild(YP.el('div', { class: 'ps-head' }, [
       YP.el('div', {}, [
-        YP.el('div', { class: 'ps-brand', text: 'Yippie voor de klas' }),
-        YP.el('h1', { text: 'Deelnameoverzicht ' + schoolNaam })
+        YP.el('div', { class: 'ps-brand', html: boek + 'Yippie voor de klas' }),
+        YP.el('h1', { text: 'Deelnameoverzicht - ' + schoolNaam })
       ]),
-      YP.el('div', { class: 'ps-meta', html: 'Afgedrukt op ' + nu + '<br>Planning: ' + roosterStatus + '<br>' + alle.length + ' leerling(en)' })
+      YP.el('div', { class: 'ps-meta', html: nu + '<br>Planning: ' + roosterStatus + '<br>' + set.length + ' leerling(en)' })
     ]));
 
     var perJaar = {};
-    alle.forEach(function (l) { var k = l.jaarlaag || '(onbekend)'; (perJaar[k] = perJaar[k] || []).push(l); });
+    set.forEach(function (l) { var k = l.jaarlaag || '(onbekend)'; (perJaar[k] = perJaar[k] || []).push(l); });
     Object.keys(perJaar).sort().forEach(function (jr) {
       perJaar[jr].slice().sort(function (a, b) { return a.leerling < b.leerling ? -1 : 1; }).forEach(function (l) {
         var box = YP.el('div', { class: 'ps-leerling' });
-        box.appendChild(YP.el('h2', { text: l.leerling }));
-        box.appendChild(YP.el('div', { class: 'ps-sub', text: [l.jaarlaag, TRAJ[l.traject] || l.traject, l.mentor ? 'mentor ' + l.mentor : '', 'status: ' + l.status].filter(Boolean).join('  ·  ') }));
-        box.appendChild(YP.el('div', { class: 'ps-sub', text: 'Vakken gevolgd: ' + ((l.vakkenGevolgd && l.vakkenGevolgd.join(', ')) || '-') + '   |   Ingeschreven: ' + ((l.vakken || []).join(', ') || '-') }));
+        box.appendChild(YP.el('h2', { text: l.leerling + '  -  ' + l.jaarlaag + '  -  ' + (TRAJ[l.traject] || l.traject || '') }));
+        box.appendChild(YP.el('div', { class: 'ps-sub', text:
+          'Mentor: ' + (l.mentor || '-') + '   ·   Status: ' + l.status +
+          '   ·   Vakken gevolgd: ' + ((l.vakkenGevolgd && l.vakkenGevolgd.join(', ')) || '-') }));
         if (l.sessies.length) {
           var tbl = YP.el('table', {}, [YP.el('thead', {}, [YP.el('tr', {}, [
             YP.el('th', { text: 'Datum' }), YP.el('th', { text: 'Tijd' }), YP.el('th', { text: 'Vak' }),
-            YP.el('th', { text: 'Begeleider' }), YP.el('th', { text: 'Aanwezig' }), YP.el('th', { text: 'Notitie' })
+            YP.el('th', { text: 'Begeleider' }), YP.el('th', { text: 'Aanwezig' }), YP.el('th', { text: 'Notitie begeleider' })
           ])])]);
           var tb = YP.el('tbody', {});
           l.sessies.slice().sort(function (a, b) { return (a.datum || '9') < (b.datum || '9') ? -1 : 1; }).forEach(function (s) {
@@ -206,20 +231,24 @@
               YP.el('td', { text: sTijd(s) }),
               YP.el('td', { text: s.vak }),
               YP.el('td', { text: s.begeleider || '-' }),
-              YP.el('td', { text: s.aanwezigheid ? (AWNAAM[s.aanwezigheid] || s.aanwezigheid) : '' }),
+              YP.el('td', { text: s.aanwezigheid ? (AWNAAM[s.aanwezigheid] || s.aanwezigheid) : '-' }),
               YP.el('td', { text: s.notitie || '' })
             ]));
           });
           tbl.appendChild(tb);
           box.appendChild(tbl);
+          if (l.aanwezigheid && (l.aanwezigheid.aanwezig || l.aanwezigheid.afwezig || l.aanwezigheid.afgemeld)) {
+            box.appendChild(YP.el('div', { class: 'ps-sub', text: 'Totaal: ' + l.aanwezigheid.aanwezig + 'x aanwezig, ' + l.aanwezigheid.afwezig + 'x afwezig, ' + l.aanwezigheid.afgemeld + 'x afgemeld.' }));
+          }
         } else {
-          box.appendChild(YP.el('p', { class: 'ps-sub', text: 'Nog geen sessies ingepland.' }));
+          box.appendChild(YP.el('div', { class: 'ps-sub', text: 'Nog geen sessies ingepland.' }));
         }
         host.appendChild(box);
       });
     });
-    host.appendChild(YP.el('div', { class: 'ps-foot', text: 'Vertrouwelijk. Uitsluitend voor intern gebruik door ' + schoolNaam + '. Vragen: planning@yippievoordeklas.nl' }));
+    host.appendChild(YP.el('div', { class: 'ps-foot', text: 'Vertrouwelijk - uitsluitend voor intern gebruik door ' + schoolNaam + '. Vragen: planning@yippievoordeklas.nl' }));
   }
+  function printMet(namen) { bouwPrintSheet(namen); setTimeout(function () { window.print(); }, 40); }
 
   async function load() {
     await YP.me;
@@ -233,19 +262,25 @@
     var ingedeeld = alle.filter(function (l) { return l.ingedeeld > 0; }).length;
     panel.innerHTML = '';
 
-    var kop = YP.el('div', { class: 'card card-pad', style: 'margin-bottom:14px' });
-    var printBtn = YP.el('button', { class: 'btn btn-primary btn-sm', html: ico('download', { size: 14 }) + ' Afdrukken of pdf' });
-    printBtn.addEventListener('click', function () { bouwPrintSheet(); setTimeout(function () { window.print(); }, 30); });
+    var kop = YP.el('div', { class: 'card card-pad tight', style: 'margin-bottom:14px' });
+    var printAlles = YP.el('button', { class: 'btn btn-primary btn-sm', html: ico('download', { size: 14 }) + ' Print alles' });
+    printAlles.addEventListener('click', function () { printMet(null); });
+    var printSel = YP.el('button', { id: 'printSel', class: 'btn btn-cta', style: 'width:auto;padding:8px 14px;font-size:12.5px;display:none', text: 'Print selectie (0)' });
+    printSel.addEventListener('click', function () {
+      var namen = Object.keys(gekozen).filter(function (k) { return gekozen[k]; });
+      printMet(namen);
+    });
     kop.appendChild(YP.el('div', { class: 'spread' }, [
       YP.el('div', {}, [
         YP.el('h2', { text: d.school }),
         YP.el('p', { class: 'card-sub', text: alle.length + ' leerling(en), ' + ingedeeld + ' ingedeeld. Planning: ' + d.roosterStatus + '.' })
       ]),
-      printBtn
+      YP.el('div', { class: 'row' }, [printSel, printAlles])
     ]));
     var zoek = YP.el('input', { class: 'input', type: 'search', placeholder: 'Zoek een leerling op naam', style: 'margin-top:12px' });
     zoek.addEventListener('input', function () { render(zoek.value.trim()); });
     kop.appendChild(zoek);
+    kop.appendChild(YP.el('p', { class: 'hint', style: 'margin-top:6px', text: 'Vink leerlingen aan om ze los (of met een paar tegelijk) af te drukken.' }));
     panel.appendChild(kop);
 
     listHost = YP.el('div', {});
