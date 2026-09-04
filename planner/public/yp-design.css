@@ -32,8 +32,13 @@
 }
 
 *{box-sizing:border-box;font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* scrollbar-gutter reserveert de baan zodat de pagina niet verspringt als de
+   scrollbar verschijnt/verdwijnt (o.a. bij het openen van een dialoog). */
+html{scrollbar-gutter:stable}
 html,body{height:100%;background:var(--bg);overflow-x:clip}
 body{color:var(--ink);min-height:100%;line-height:1.5;-webkit-font-smoothing:antialiased}
+/* Geen achtergrond-scroll terwijl een dialoog open staat. */
+html:has(dialog[open]){overflow:hidden}
 ::selection{background:var(--coral-light);color:var(--coral-dark)}
 :focus-visible{outline:2px solid var(--coral);outline-offset:2px;border-radius:4px}
 .input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:none}
@@ -82,6 +87,8 @@ html.readonly [data-write]{display:none!important}
    pagina's zetten er .wrap-narrow bij voor een leesbare gecentreerde kolom. */
 .wrap{margin:0;padding:18px var(--pad-x) 96px}
 .wrap-narrow{max-width:var(--maxw);margin-left:auto;margin-right:auto}
+/* Smalle (formulier/landings)pagina's hoeven geen FAB-ruimte onderaan. */
+.wrap.wrap-narrow{padding-bottom:40px}
 .row{display:flex;gap:12px;flex-wrap:wrap}
 .row>*{min-width:0}
 .grid{display:grid;gap:16px}
@@ -279,9 +286,9 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .intro-note b{color:var(--ink);font-weight:800}
 
 /* ===== Welkom-blok (rol-specifieke intro bovenaan) ================= */
-.welkom{background:linear-gradient(135deg,var(--coral-light),#FFF4F1);border:1px solid var(--warn-line);border-radius:var(--r-l);padding:18px 20px;margin-bottom:16px;animation:ypSlideUp .3s ease both}
-.welkom h2{font-size:16px;font-weight:800;color:var(--coral-dark);margin-bottom:5px}
-.welkom p{font-size:13px;color:var(--ink-2);line-height:1.6;max-width:64ch}
+.welkom{background:linear-gradient(135deg,var(--coral-light),#FFF4F1);border:1px solid var(--warn-line);border-radius:var(--r-l);padding:14px 18px;margin-bottom:12px;animation:ypSlideUp .3s ease both}
+.welkom h2{font-size:15px;font-weight:800;color:var(--coral-dark);margin-bottom:4px}
+.welkom p{font-size:12.5px;color:var(--ink-2);line-height:1.55;max-width:70ch}
 .welkom .w-punt{display:flex;gap:8px;font-size:12.5px;color:var(--ink-2);margin-top:6px}
 .welkom .w-punt b{color:var(--ink);font-weight:700}
 
@@ -323,7 +330,7 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .rijbadge.warn{background:var(--warn-bg);color:var(--warn)}
 .rijbadge.bad{background:var(--bad-bg);color:var(--bad)}
 .rijbadge.info{background:var(--divider);color:var(--ink-2)}
-.groep-kop{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--ink);padding:10px 4px 6px;cursor:pointer}
+.groep-kop{display:flex;align-items:center;gap:8px;font-weight:800;font-size:12.5px;color:var(--ink);padding:7px 4px 5px;cursor:pointer}
 .groep-kop .gk-chev{color:var(--chev);transition:transform .15s}
 .groep-kop.dicht .gk-chev{transform:rotate(-90deg)}
 
@@ -342,6 +349,13 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .stack.tight{gap:9px}
 .list-row.tight{padding:8px 4px;font-size:13px;gap:9px}
 .grid.cols-2.tight,.grid.tight{gap:10px}
+/* Dichtere chip-set voor korte labels (jaarlagen, vakken) */
+.chipset.dense{gap:5px}
+.chipset.dense .chip-check span{padding:5px 10px;font-size:11.5px}
+/* Lijst die binnen z'n eigen hoogte scrollt i.p.v. de pagina op te rekken */
+.scrollbox{max-height:320px;overflow-y:auto;overscroll-behavior:contain}
+.scrollbox.sm{max-height:220px}
+.scrollbox.lg{max-height:440px}
 
 /* ===== Inklapbare sectie (native <details>) ======================== */
 .fold{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden}
@@ -418,6 +432,33 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 
 .hidden{display:none!important}
 .mono{font-variant-numeric:tabular-nums}
+
+/* ===== Afdrukken / pdf (formeel rapport, geen schermchrome) ======== */
+.print-sheet{display:none}
+@media print{
+  @page{margin:18mm 16mm}
+  html,body{background:#fff;color:#000}
+  .topbar,.ro-banner,.tabs,dialog,.toast,.update-bar,.no-print,
+  button,.btn,.hdr-actions,#yp-toast{display:none!important}
+  .wrap{padding:0!important;max-width:none!important}
+  .card{box-shadow:none!important;border:none!important;border-radius:0!important;animation:none!important;page-break-inside:avoid}
+  .card > .card-head{border-bottom:1px solid #000;padding:0 0 6px}
+  .card-pad{padding:0}
+  .welkom{display:none!important}
+  .print-sheet{display:block}
+  .print-sheet .ps-head{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:18px}
+  .print-sheet .ps-brand{font-weight:800;font-size:16px;letter-spacing:.02em}
+  .print-sheet .ps-meta{font-size:11px;color:#333;text-align:right}
+  .print-sheet h1{font-size:18px;margin:0 0 2px}
+  .print-sheet table{width:100%;border-collapse:collapse;font-size:11px;margin:10px 0 20px}
+  .print-sheet th{text-align:left;border-bottom:1px solid #000;padding:5px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+  .print-sheet td{border-bottom:1px solid #ccc;padding:5px 6px;vertical-align:top}
+  .print-sheet .ps-leerling{page-break-inside:avoid;margin-bottom:14px}
+  .print-sheet .ps-leerling h2{font-size:13px;margin:0 0 2px;border-bottom:1px solid #000;padding-bottom:2px}
+  .print-sheet .ps-sub{font-size:10px;color:#333;margin-bottom:4px}
+  .print-sheet .ps-foot{margin-top:24px;font-size:10px;color:#555;border-top:1px solid #ccc;padding-top:6px}
+}
 
 @media(max-width:560px){
   .input,select,textarea{font-size:16px;padding-top:9px;padding-bottom:9px}

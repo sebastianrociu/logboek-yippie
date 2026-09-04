@@ -72,6 +72,7 @@
       dlg.querySelector('[data-no]').addEventListener('click', function () { finish(false); });
       dlg.addEventListener('submit', function () { finish(true); });
       dlg.addEventListener('cancel', function () { finish(false); });
+      dlg.addEventListener('close', function () { finish(false); }); // esc of klik-naast
       dlg.showModal();
     });
   }
@@ -88,6 +89,18 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-close]');
     if (b) { var d = b.closest('dialog'); if (d) d.close(); }
+  });
+
+  // Licht sluiten: klik naast de dialoog (op de backdrop) sluit 'm. Een klik op
+  // de backdrop heeft het <dialog> zelf als target; we sluiten alleen als de klik
+  // buiten het zichtbare kader viel. Dialogen met [data-no-light-dismiss] slaan we over.
+  document.addEventListener('click', function (e) {
+    var d = e.target;
+    if (!d || d.tagName !== 'DIALOG' || !d.open) return;
+    if (d.hasAttribute('data-no-light-dismiss')) return;
+    var r = d.getBoundingClientRect();
+    var inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inside) { try { d.close(); } catch (x) {} }
   });
 
   // Uitleg-dialoog: open het <dialog id="introDialog"> van de pagina.
