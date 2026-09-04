@@ -9,7 +9,7 @@
    inschrijvingen (append) zodat gelijktijdige schrijfacties niet verdwijnen.
    ========================================================================== */
 
-const VERSION = '2026-09-05.2';
+const VERSION = '2026-09-05.3';
 
 const KEYS = {
   config: 'config',
@@ -25,11 +25,13 @@ const NIVEAUS = ['mavo', 'havo', 'vwo'];
 const LEERJAAR_MAX = { mavo: 4, havo: 5, vwo: 6 };
 const TRAJECTEN = ['examentraining', 'bijspijker'];
 
+const DEFAULT_TIJDEN = { ochtend: { van: '09:00', tot: '12:30' }, middag: { van: '13:00', tot: '16:00' } };
+
 const DEFAULTS = {
   config: {
     _rev: 0,
     scholen: [], vakken: [], jaarlagen: [], blokken: [],
-    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18 },
+    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18, tijden: DEFAULT_TIJDEN },
   },
   resources: { _rev: 0, items: [], tombstones: {} },
   inschrijvingen: { _rev: 0, items: [], tombstones: {} },
@@ -130,13 +132,23 @@ function normalize(key, o) {
     o.scholen = o.scholen || []; o.vakken = o.vakken || [];
     o.jaarlagen = o.jaarlagen || []; o.blokken = o.blokken || [];
     o.instellingen = Object.assign({ groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18 }, o.instellingen || {});
+    // Dagdeel-tijden (beheer past ze aan; standaard een dag van 09:00 tot 16:00).
+    const t = o.instellingen.tijden || {};
+    o.instellingen.tijden = {
+      ochtend: Object.assign({}, DEFAULT_TIJDEN.ochtend, t.ochtend || {}),
+      middag: Object.assign({}, DEFAULT_TIJDEN.middag, t.middag || {}),
+    };
     for (const b of o.blokken) if (!Array.isArray(b.dagen) || !b.dagen.length) b.dagen = ['za', 'zo'];
   } else if (key === 'resources') {
     o.items = o.items || []; o.tombstones = o.tombstones || {};
     for (const r of o.items) {
       r.vakIds = r.vakIds || []; r.jaarlaagIds = r.jaarlaagIds || []; r.vakVoorkeuren = r.vakVoorkeuren || [];
       r.voorkeurJaarlagen = r.voorkeurJaarlagen || [];
-      if (r.voorkeurVakVrij == null) r.voorkeurVakVrij = '';
+      // vrij in te vullen gewenste vakken: nu een lijst (was één string)
+      if (!Array.isArray(r.voorkeurVakkenVrij)) {
+        r.voorkeurVakkenVrij = r.voorkeurVakVrij ? [String(r.voorkeurVakVrij)] : [];
+      }
+      r.voorkeurVakVrij = r.voorkeurVakkenVrij.join(', ');
       // Beschikbaarheid is omgedraaid: een begeleider is standaard beschikbaar;
       // 'afwezigheid' bevat de dagdelen waarop die NIET kan. Oud 'beschikbaarheid'
       // wordt niet meer gebruikt (geen live data; dev-KV is resetbaar).
@@ -408,7 +420,7 @@ function validateInschrijving(body, config) {
 async function vindOfMaakJaarlaag(env, config, niveau, leerjaar) {
   if (!niveau || !leerjaar) return '';
   const label = leerjaar + ' ' + (niveau === 'mavo' ? (config.instellingen.mavoLabel || 'vmbo-tl') : niveau);
-  const wantSlug = slug(label);
+  const wantSlug = 'jl_' + niveau + '_' + leerjaar;
   const past = (j) => j.id === wantSlug
     || (j.niveau === niveau && Number(j.leerjaar) === Number(leerjaar))
     || String(j.label || '').trim().toLowerCase() === label.toLowerCase();
@@ -452,6 +464,28 @@ function weekendSleutel(datum) {
 function vakNaamById(config, id) {
   const v = (config.vakken || []).find((x) => x.id === id);
   return v ? v.naam : id;
+}
+function tijdVoor(config, dagdeel) {
+  const t = (config.instellingen && config.instellingen.tijden) || DEFAULT_TIJDEN;
+  return dagdeel === 'middag' ? t.middag : t.ochtend;
+}
+// config.jaarlagen aangevuld met het volledige standaardrooster (mavo 1-4,
+// havo 1-5, vwo 1-6), zodat de trainer echt alle jaarlagen kan aanvinken.
+function alleJaarlagen(config) {
+  const mavoLabel = (config.instellingen && config.instellingen.mavoLabel) || 'vmbo-tl';
+  const uit = (config.jaarlagen || []).slice();
+  const heeft = new Set(uit.map((j) => (j.niveau && j.leerjaar) ? j.niveau + '|' + j.leerjaar : ('label|' + String(j.label || '').toLowerCase())));
+  for (const niv of NIVEAUS) {
+    for (let lj = 1; lj <= LEERJAAR_MAX[niv]; lj++) {
+      if (heeft.has(niv + '|' + lj)) continue;
+      uit.push({ id: 'jl_' + niv + '_' + lj, label: lj + ' ' + (niv === 'mavo' ? mavoLabel : niv), niveau: niv, leerjaar: lj });
+    }
+  }
+  uit.sort((a, b) => {
+    const rk = { mavo: 0, havo: 1, vwo: 2 };
+    return (rk[a.niveau] ?? 3) - (rk[b.niveau] ?? 3) || (Number(a.leerjaar) || 0) - (Number(b.leerjaar) || 0);
+  });
+  return uit;
 }
 function resourceVakKeys(r, config) {
   return new Set((r.vakIds || []).map((id) => vakKey(vakNaamById(config, id))));
@@ -707,11 +741,15 @@ function mijnPayload(rec, rooster, config) {
   const schoolN = naam('scholen'), jaarN = naam('jaarlagen'), blokN = naam('blokken');
   const sessies = (rooster.status === 'definitief' ? rooster.sessies : [])
     .filter((s) => (s.leerlingIds || []).includes(rec.id))
-    .map((s) => ({
-      id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie,
-      blok: blokN[s.blokId] || '', vak: s.vak || '', begeleider: s.begeleiderNaam || '',
-      traject: s.traject || '',
-    }));
+    .map((s) => {
+      const tt = tijdVoor(config, s.dagdeel);
+      return {
+        id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie,
+        van: tt.van, tot: tt.tot,
+        blok: blokN[s.blokId] || '', vak: s.vak || '', begeleider: s.begeleiderNaam || '',
+        traject: s.traject || '',
+      };
+    });
   return {
     inschrijving: {
       leerling: rec.leerling.naam,
@@ -927,6 +965,7 @@ async function handleApi(request, env) {
             merged.vakVoorkeuren = prev.vakVoorkeuren || [];
             merged.voorkeurJaarlagen = prev.voorkeurJaarlagen || [];
             merged.voorkeurVakVrij = prev.voorkeurVakVrij || '';
+            merged.voorkeurVakkenVrij = prev.voorkeurVakkenVrij || [];
             merged.afwezigheid = (staAfw && Array.isArray(it.afwezigheid))
               ? it.afwezigheid.slice(0, 600).map((b) => ({ datum: str(b.datum, 10), dagdeel: DAGDELEN.includes(b.dagdeel) ? b.dagdeel : 'ochtend' }))
               : (prev.afwezigheid || []);
@@ -973,6 +1012,9 @@ async function handleApi(request, env) {
       // Volledige vervanging met _rev-check (geen merge-op-id): zo blijft een
       // verwijderde sessie ook echt weg. Bij gelijktijdig schrijven -> 409, retry.
       if (method === 'PUT') return json(await putSection(env, KEYS.rooster, body, []));
+    }
+    if (sub === 'aanwezigheid' && method === 'GET') {
+      return json(await readJSON(env, KEYS.aanwezigheid));
     }
     if (sub === 'rooster/analyse' && method === 'GET') {
       const [config, resources, inschrijvingen, rooster] = await Promise.all([
@@ -1059,7 +1101,7 @@ async function handleApi(request, env) {
             if (!d.items.find((x) => x.id === resourceId)) {
               d.items.push({
                 id: resourceId, naam, email, vakIds, jaarlaagIds,
-                vakVoorkeuren: [], voorkeurJaarlagen: [], voorkeurVakVrij: str(body.voorkeurVakVrij, 80),
+                vakVoorkeuren: [], voorkeurJaarlagen: [], voorkeurVakVrij: '', voorkeurVakkenVrij: [],
                 maxPerWeekend: 3, afwezigheid: [],
               });
             }
@@ -1123,25 +1165,30 @@ async function handleApi(request, env) {
       const sessies = rooster.sessies
         .filter((s) => s.resourceId === rid)
         .sort((a, b) => (a.datum || '9') < (b.datum || '9') ? -1 : 1)
-        .map((s) => ({
-          id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie,
-          blok: blokN[s.blokId] || '', vak: s.vak || '', definitief: rooster.status === 'definitief',
-          traject: s.traject || '', jaarlaag: jaarN[s.jaarlaagId] || '',
-          notitie: (aanw.notities[s.id] && aanw.notities[s.id].tekst) || '',
-          leerlingen: (s.leerlingIds || []).map((id) => ({ id, naam: leerlingNaam(id), aanwezigheid: (aanw.perSessie[s.id] || {})[id] || '' })),
-        }));
+        .map((s) => {
+          const tt = tijdVoor(config, s.dagdeel);
+          return {
+            id: s.id, datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, locatie: s.locatie,
+            van: tt.van, tot: tt.tot,
+            blok: blokN[s.blokId] || '', vak: s.vak || '', definitief: rooster.status === 'definitief',
+            traject: s.traject || '', jaarlaag: jaarN[s.jaarlaagId] || '',
+            notitie: (aanw.notities[s.id] && aanw.notities[s.id].tekst) || '',
+            leerlingen: (s.leerlingIds || []).map((id) => ({ id, naam: leerlingNaam(id), aanwezigheid: (aanw.perSessie[s.id] || {})[id] || '' })),
+          };
+        });
       return json({
         resource: me,
         vakNamen: me ? (me.vakIds || []).map((id) => ({ id, naam: vakN[id] || id })) : [],
-        jaarlagen: (config.jaarlagen || []).map((j) => ({ id: j.id, label: j.label })),
+        jaarlagen: alleJaarlagen(config).map((j) => ({ id: j.id, label: j.label })),
+        tijden: config.instellingen.tijden,
         blokken: (config.blokken || []).filter((b) => b.van && b.tot).map((b) => ({ id: b.id, label: b.label, van: b.van, tot: b.tot, dagen: b.dagen || ['za', 'zo'] })),
         sessies, roosterStatus: rooster.status,
       });
     }
     if (sub === 'beschikbaarheid' && method === 'PUT') {
-      // Config nodig om voorkeur-jaarlagen te valideren.
+      // Config nodig om voorkeur-jaarlagen te valideren (tegen het volledige rooster).
       const cfg = await readJSON(env, KEYS.config);
-      const jlOk = new Set((cfg.jaarlagen || []).map((j) => j.id));
+      const jlOk = new Set(alleJaarlagen(cfg).map((j) => j.id));
       await mutate(env, KEYS.resources, (d) => {
         const me = d.items.find((x) => x.id === rid);
         if (!me) throw new HttpError(404, 'resource niet gevonden');
@@ -1156,9 +1203,17 @@ async function handleApi(request, env) {
           me.vakVoorkeuren = body.vakVoorkeuren.map((v) => str(v, 40)).filter((v) => eigen.has(v)).slice(0, 30);
         }
         if (Array.isArray(body.voorkeurJaarlagen)) {
-          me.voorkeurJaarlagen = body.voorkeurJaarlagen.map((v) => str(v, 40)).filter((v) => jlOk.has(v)).slice(0, 30);
+          me.voorkeurJaarlagen = body.voorkeurJaarlagen.map((v) => str(v, 40)).filter((v) => jlOk.has(v)).slice(0, 40);
         }
-        if (body.voorkeurVakVrij != null) me.voorkeurVakVrij = str(body.voorkeurVakVrij, 80);
+        if (Array.isArray(body.voorkeurVakkenVrij)) {
+          const seen = new Set();
+          me.voorkeurVakkenVrij = body.voorkeurVakkenVrij
+            .map((v) => str(v, 60)).filter((v) => v && !seen.has(v.toLowerCase()) && seen.add(v.toLowerCase())).slice(0, 12);
+          me.voorkeurVakVrij = me.voorkeurVakkenVrij.join(', ');
+        } else if (body.voorkeurVakVrij != null) {
+          me.voorkeurVakVrij = str(body.voorkeurVakVrij, 80);
+          me.voorkeurVakkenVrij = me.voorkeurVakVrij ? [me.voorkeurVakVrij] : [];
+        }
         if (body.maxPerWeekend != null) me.maxPerWeekend = Math.max(0, Math.min(20, Number(body.maxPerWeekend) || 0));
         return d;
       });
@@ -1216,13 +1271,17 @@ async function handleApi(request, env) {
         .map((r) => {
           const sessies = (rooster.status === 'definitief' ? rooster.sessies : [])
             .filter((s) => (s.leerlingIds || []).includes(r.id))
-            .map((s) => ({
-              datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, blok: blokN[s.blokId] || '',
-              vak: s.vak || '', begeleider: s.begeleiderNaam || '', locatie: s.locatie || '',
-              traject: s.traject || '',
-              aanwezigheid: (aanw.perSessie[s.id] || {})[r.id] || '',
-              notitie: (aanw.notities[s.id] && aanw.notities[s.id].tekst) || '',
-            }));
+            .map((s) => {
+              const tt = tijdVoor(config, s.dagdeel);
+              return {
+                datum: s.datum, dag: s.dag, dagdeel: s.dagdeel, van: tt.van, tot: tt.tot,
+                blok: blokN[s.blokId] || '',
+                vak: s.vak || '', begeleider: s.begeleiderNaam || '', locatie: s.locatie || '',
+                traject: s.traject || '',
+                aanwezigheid: (aanw.perSessie[s.id] || {})[r.id] || '',
+                notitie: (aanw.notities[s.id] && aanw.notities[s.id].tekst) || '',
+              };
+            });
           const telling = { aanwezig: 0, afwezig: 0, afgemeld: 0 };
           for (const s of sessies) if (s.aanwezigheid && telling[s.aanwezigheid] != null) telling[s.aanwezigheid]++;
           const vakken = [];
@@ -1272,22 +1331,19 @@ async function seed(env) {
       { id: 'vak_sk', naam: 'Scheikunde' }, { id: 'vak_en', naam: 'Engels' },
       { id: 'vak_ne', naam: 'Nederlands' }, { id: 'vak_bio', naam: 'Biologie' }, { id: 'vak_ec', naam: 'Economie' },
     ],
-    jaarlagen: [
-      { id: 'jl_3h', label: '3 havo', niveau: 'havo', leerjaar: 3 },
-      { id: 'jl_4h', label: '4 havo', niveau: 'havo', leerjaar: 4 },
-      { id: 'jl_5h', label: '5 havo', niveau: 'havo', leerjaar: 5 },
-      { id: 'jl_4v', label: '4 vwo', niveau: 'vwo', leerjaar: 4 },
-      { id: 'jl_5v', label: '5 vwo', niveau: 'vwo', leerjaar: 5 },
-      { id: 'jl_6v', label: '6 vwo', niveau: 'vwo', leerjaar: 6 },
-      { id: 'jl_3t', label: '3 vmbo-tl', niveau: 'mavo', leerjaar: 3 },
-      { id: 'jl_4t', label: '4 vmbo-tl', niveau: 'mavo', leerjaar: 4 },
-    ],
+    jaarlagen: (function () {
+      const out = [];
+      for (const niv of NIVEAUS) for (let lj = 1; lj <= LEERJAAR_MAX[niv]; lj++) {
+        out.push({ id: 'jl_' + niv + '_' + lj, label: lj + ' ' + (niv === 'mavo' ? 'vmbo-tl' : niv), niveau: niv, leerjaar: lj });
+      }
+      return out;
+    })(),
     blokken: [
       { id: 'blok1', label: 'Blok 1 (na de herfstvakantie)', van: '2026-10-26', tot: '2026-12-13', dagen: ['za', 'zo'] },
       { id: 'blok2', label: 'Blok 2 (na de kerstvakantie)', van: '2027-01-11', tot: '2027-02-14', dagen: ['za', 'zo'] },
       { id: 'blok3', label: 'Blok 3 (voorjaar, richting examens)', van: '2027-03-02', tot: '2027-04-19', dagen: ['za', 'zo'] },
     ],
-    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18 },
+    instellingen: { groepMin: 4, groepMax: 12, mavoLabel: 'vmbo-tl', splitOpTraject: true, bewaarMaanden: 18, tijden: structuredClone(DEFAULT_TIJDEN) },
   };
   await mutate(env, KEYS.config, () => config);
 
@@ -1306,11 +1362,11 @@ async function seed(env) {
   await mutate(env, KEYS.resources, () => ({
     _rev: 0, tombstones: {},
     items: [
-      { id: 'res_1', naam: 'K. Jansen', email: 'trainer@yippie.test', vakIds: ['vak_wi', 'vak_na'], jaarlaagIds: ['jl_3h', 'jl_4h', 'jl_4v'],
-        vakVoorkeuren: ['vak_wi'], voorkeurJaarlagen: ['jl_4v'], voorkeurVakVrij: '', maxPerWeekend: 3,
+      { id: 'res_1', naam: 'K. Jansen', email: 'trainer@yippie.test', vakIds: ['vak_wi', 'vak_na'], jaarlaagIds: ['jl_havo_3', 'jl_havo_4', 'jl_vwo_4'],
+        vakVoorkeuren: ['vak_wi'], voorkeurJaarlagen: ['jl_vwo_4'], voorkeurVakVrij: 'Wiskunde D', voorkeurVakkenVrij: ['Wiskunde D'], maxPerWeekend: 3,
         afwezigheid: [{ datum: '2026-11-14', dagdeel: 'ochtend' }] },
-      { id: 'res_2', naam: 'L. Bakker', email: 'lbakker@yippie.test', vakIds: ['vak_en', 'vak_ne'], jaarlaagIds: ['jl_3h', 'jl_4t', 'jl_5h'],
-        vakVoorkeuren: [], voorkeurJaarlagen: [], voorkeurVakVrij: '', maxPerWeekend: 2, afwezigheid: [] },
+      { id: 'res_2', naam: 'L. Bakker', email: 'lbakker@yippie.test', vakIds: ['vak_en', 'vak_ne'], jaarlaagIds: ['jl_havo_3', 'jl_mavo_4', 'jl_havo_5'],
+        vakVoorkeuren: [], voorkeurJaarlagen: [], voorkeurVakVrij: '', voorkeurVakkenVrij: [], maxPerWeekend: 2, afwezigheid: [] },
     ],
   }));
 
@@ -1320,25 +1376,41 @@ async function seed(env) {
     ouder: { naam: 'Ouder van ' + (over.leerling ? over.leerling.naam : ''), email: 'ouder@example.test', tel: '06 1234 5678' },
     mentor: { naam: 'M. de Wit', email: 'mentor@lyceum.test' }, ...over,
   });
-  await mutate(env, KEYS.inschrijvingen, () => ({
-    _rev: 0, tombstones: {},
-    items: [
-      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Sanne de Vries', email: '', tel: '' },
-        keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde'] }] }),
-      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Tim Post', email: '', tel: '' },
-        keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['wiskunde'] }] }),
-      mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_3h', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Noor Smit', email: '', tel: '' },
-        keuzes: [
-          { blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde', 'Natuurkunde'] },
-          { blokId: 'blok2', dag: 'zo', dagdeel: 'middag', vakken: ['Natuurkunde'] },
-        ] }),
-      mk({ schoolId: 'sch_college', jaarlaagId: 'jl_4v', niveau: 'vwo', leerjaar: 4, traject: 'bijspijker', leerling: { naam: 'Daan Mulder', email: '', tel: '' },
-        keuzes: [{ blokId: 'blok1', dag: 'zo', dagdeel: 'ochtend', vakken: ['Natuurkunde'] }] }),
-      mk({ schoolId: '', schoolVrij: 'Het Nieuwe Lyceum', jaarlaagId: 'jl_6v', niveau: 'vwo', leerjaar: 6, traject: 'examentraining', leerling: { naam: 'Lisa Groen', email: 'lisa@example.test', tel: '' },
-        keuzes: [{ blokId: 'blok3', dag: 'za', dagdeel: 'ochtend', vakken: ['nask'] }] }),
-    ],
+  const insItems = [
+    mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_havo_3', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Sanne de Vries', email: '', tel: '' },
+      keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde'] }] }),
+    mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_havo_3', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Tim Post', email: '', tel: '' },
+      keuzes: [{ blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['wiskunde'] }] }),
+    mk({ schoolId: 'sch_lyceum', jaarlaagId: 'jl_havo_3', niveau: 'havo', leerjaar: 3, traject: 'bijspijker', leerling: { naam: 'Noor Smit', email: '', tel: '' },
+      keuzes: [
+        { blokId: 'blok1', dag: 'za', dagdeel: 'ochtend', vakken: ['Wiskunde', 'Natuurkunde'] },
+        { blokId: 'blok2', dag: 'zo', dagdeel: 'middag', vakken: ['Natuurkunde'] },
+      ] }),
+    mk({ schoolId: 'sch_college', jaarlaagId: 'jl_vwo_4', niveau: 'vwo', leerjaar: 4, traject: 'bijspijker', leerling: { naam: 'Daan Mulder', email: '', tel: '' },
+      keuzes: [{ blokId: 'blok1', dag: 'zo', dagdeel: 'ochtend', vakken: ['Natuurkunde'] }] }),
+    mk({ schoolId: '', schoolVrij: 'Het Nieuwe Lyceum', jaarlaagId: 'jl_vwo_6', niveau: 'vwo', leerjaar: 6, traject: 'examentraining', leerling: { naam: 'Lisa Groen', email: 'lisa@example.test', tel: '' },
+      keuzes: [{ blokId: 'blok3', dag: 'za', dagdeel: 'ochtend', vakken: ['nask'] }] }),
+  ];
+  await mutate(env, KEYS.inschrijvingen, () => ({ _rev: 0, tombstones: {}, items: insItems }));
+
+  // Een testtraining van vandaag, zodat de trainer de aanwezigheids- en
+  // notitiemenu's meteen ziet (rooster mag concept zijn).
+  const nu = new Date();
+  const vandaag = nu.toISOString().slice(0, 10);
+  const wd = nu.getUTCDay();
+  const dagTag = wd === 0 ? 'zo' : (wd === 6 ? 'za' : 'za');
+  await mutate(env, KEYS.rooster, () => ({
+    ...structuredClone(DEFAULTS.rooster),
+    status: 'concept',
+    sessies: [{
+      id: 's_' + uid(7), vak: 'Wiskunde', jaarlaagId: 'jl_havo_3', schoolId: 'sch_lyceum',
+      blokId: 'blok1', dag: dagTag, dagdeel: nu.getHours() < 12 ? 'ochtend' : 'middag', traject: 'bijspijker',
+      datum: vandaag, locatie: 'Lokaal 2',
+      resourceId: 'res_1', begeleiderNaam: 'K. Jansen',
+      leerlingIds: [insItems[0].id, insItems[1].id, insItems[2].id],
+      min: 4, max: 12, bron: 'handmatig', buitenBeschikbaarheid: false,
+    }],
   }));
-  await mutate(env, KEYS.rooster, () => structuredClone(DEFAULTS.rooster));
   await mutate(env, KEYS.aanwezigheid, () => structuredClone(DEFAULTS.aanwezigheid));
 
   return { ok: true, seeded: true, logins: { beheerder: config && (cleanEmail(env.SEED_ADMIN_EMAIL) || 'beheer@yippie.test'), mentor: 'mentor@lyceum.test / mentor1234', resource: 'trainer@yippie.test / begeleider1234' } };
