@@ -1,6 +1,10 @@
 .DS_Store
 .Rhistory
 node_modules/
+
+# Pentest-engagement: recon, cookies en bevindingen over het live systeem.
+# Hoort niet in de projectrepo (aparte private opslag).
+pentest/
 planner/.wrangler/
 planner/cron-worker/.wrangler/
 planner/.dev.vars

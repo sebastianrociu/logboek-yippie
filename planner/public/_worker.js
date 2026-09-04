@@ -310,7 +310,16 @@ async function checkPassword(pw, saltB64, hashB64) {
 async function getAuth(env, req) {
   const payload = await verifySession(env, readSessCookie(req));
   if (!payload) return null;
-  return { uid: payload.uid, rol: payload.rol, schoolId: payload.sid || null, resourceId: payload.rid || null, naam: payload.naam || '' };
+  // De cookie is ondertekend, maar we toetsen 'm alsnog aan de users-store: zo
+  // verliest een verwijderd of gedegradeerd account meteen toegang (anders pas
+  // na afloop van de 12-uurs sessie). Kost één KV-lees op de ingelogde routes;
+  // een gewijzigde naam/school/koppeling werkt zo ook zonder opnieuw inloggen.
+  const users = await readJSON(env, KEYS.users);
+  const u = (users.items || []).find((x) => x.id === payload.uid);
+  if (!u || u.rol !== payload.rol) return null;
+  if (u.rol === 'mentor' && (u.schoolId || null) !== (payload.sid || null)) return null;
+  if (u.rol === 'resource' && (u.resourceId || null) !== (payload.rid || null)) return null;
+  return { uid: u.id, rol: u.rol, schoolId: u.schoolId || null, resourceId: u.resourceId || null, naam: u.naam || payload.naam || '' };
 }
 function requireRole(auth, rol) {
   if (!auth || auth.rol !== rol) throw new HttpError(403, 'geen toegang');
@@ -796,7 +805,9 @@ async function handleApi(request, env) {
   const secure = url.protocol === 'https:' || (request.headers.get('x-forwarded-proto') || '') === 'https';
   const body = ['POST', 'PUT', 'PATCH'].includes(method)
     ? await request.json().catch(() => ({})) : {};
-  const clientIp = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'onbekend';
+  // Alleen de door Cloudflare gezette header; 'x-forwarded-for' is client-spoofbaar
+  // en zou een aanvaller verse rate-limit-buckets laten maken.
+  const clientIp = request.headers.get('cf-connecting-ip') || 'onbekend';
 
   // In productie MOET SESSION_SECRET gezet zijn; anders geen geldige sessies.
   if ((env.ENV || 'production') === 'production' && !env.SESSION_SECRET) {

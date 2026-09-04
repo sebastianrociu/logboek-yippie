@@ -10,48 +10,78 @@
 
 const DOMAIN_KEYS = ['config', 'resources', 'inschrijvingen', 'rooster', 'users', 'aanwezigheid'];
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const stamp = () => Math.random().toString(36).slice(2, 10);
+
+// Zelfde optimistic-lock als mutate() in de Pages-Worker: lees -> wijzig -> schrijf
+// -> lees terug en controleer _rev + _by. Zo gaat een gelijktijdige schrijfactie
+// van de Pages-Worker tijdens de cron-run niet verloren. fn() geeft null terug = niets te doen.
+async function mutateVerified(env, key, fn, now) {
+  const by = stamp();
+  for (let poging = 0; poging < 3; poging++) {
+    let cur = {};
+    try { cur = JSON.parse((await env.PLANNER_KV.get(key)) || '{}'); } catch { cur = {}; }
+    const next = fn(cur);
+    if (next == null) return { changed: false, value: cur };
+    next._rev = (cur._rev || 0) + 1;
+    next._at = now.toISOString();
+    next._by = by;
+    await env.PLANNER_KV.put(key, JSON.stringify(next));
+    let check = {};
+    try { check = JSON.parse((await env.PLANNER_KV.get(key)) || '{}'); } catch { check = {}; }
+    if (check._rev === next._rev && check._by === by) return { changed: true, value: check };
+    await sleep(80 * (poging + 1));
+  }
+  throw new Error('rev-conflict op ' + key);
+}
+
 // Retentie (AVG): geannuleerde/afgeronde inschrijvingen ouder dan config
 // instellingen.bewaarMaanden opschonen, inclusief cascade uit rooster + aanwezigheid.
 async function retentiePurge(env, now) {
-  const raw = await env.PLANNER_KV.get('inschrijvingen');
-  if (!raw) return { purge: 'geen data' };
-  const ins = JSON.parse(raw);
   let cfg = {};
   try { cfg = JSON.parse((await env.PLANNER_KV.get('config')) || '{}'); } catch { /* ignore */ }
   const maanden = (cfg.instellingen && cfg.instellingen.bewaarMaanden) || 18;
   const grens = new Date(now.getTime() - maanden * 30 * 24 * 3600 * 1000).toISOString();
+
   const wegIds = new Set();
-  ins.items = (ins.items || []).filter((r) => {
-    const oud = (r.ts || '') < grens;
-    const klaar = r.status === 'geannuleerd' || r.status === 'afgerond';
-    if (oud && (klaar || r.verwijderVerzocht)) { wegIds.add(r.id); return false; }
-    return true;
-  });
-  if (!wegIds.size) return { purge: 0 };
-  ins.tombstones = ins.tombstones || {};
-  for (const id of wegIds) ins.tombstones[id] = now.getTime();
-  ins._rev = (ins._rev || 0) + 1; ins._at = now.toISOString();
-  await env.PLANNER_KV.put('inschrijvingen', JSON.stringify(ins));
-  let leegeSessies = new Set();
-  const rraw = await env.PLANNER_KV.get('rooster');
-  if (rraw) {
-    const rooster = JSON.parse(rraw);
-    for (const s of (rooster.sessies || [])) {
+  const insRes = await mutateVerified(env, 'inschrijvingen', (ins) => {
+    if (!ins.items) return null;
+    wegIds.clear();
+    ins.items = ins.items.filter((r) => {
+      const oud = (r.ts || '') < grens;
+      const klaar = r.status === 'geannuleerd' || r.status === 'afgerond';
+      if (oud && (klaar || r.verwijderVerzocht)) { wegIds.add(r.id); return false; }
+      return true;
+    });
+    if (!wegIds.size) return null;
+    ins.tombstones = ins.tombstones || {};
+    for (const id of wegIds) ins.tombstones[id] = now.getTime();
+    return ins;
+  }, now);
+  if (!insRes.changed || !wegIds.size) return { purge: 0 };
+
+  const leegeSessies = new Set();
+  await mutateVerified(env, 'rooster', (rooster) => {
+    if (!rooster.sessies) return null;
+    let veranderd = false;
+    for (const s of rooster.sessies) {
+      const n = (s.leerlingIds || []).length;
       s.leerlingIds = (s.leerlingIds || []).filter((x) => !wegIds.has(x));
+      if (s.leerlingIds.length !== n) veranderd = true;
       if (!s.leerlingIds.length) leegeSessies.add(s.id);
     }
-    rooster._rev = (rooster._rev || 0) + 1; rooster._at = now.toISOString();
-    await env.PLANNER_KV.put('rooster', JSON.stringify(rooster));
-  }
-  const araw = await env.PLANNER_KV.get('aanwezigheid');
-  if (araw) {
-    const aanw = JSON.parse(araw);
-    for (const sid of Object.keys(aanw.perSessie || {})) for (const id of wegIds) delete aanw.perSessie[sid][id];
-    // notitie van een sessie die door de purge leeg raakte, mag ook weg
-    for (const sid of leegeSessies) if (aanw.notities) delete aanw.notities[sid];
-    aanw._rev = (aanw._rev || 0) + 1; aanw._at = now.toISOString();
-    await env.PLANNER_KV.put('aanwezigheid', JSON.stringify(aanw));
-  }
+    return veranderd ? rooster : null;
+  }, now);
+
+  await mutateVerified(env, 'aanwezigheid', (aanw) => {
+    let veranderd = false;
+    for (const sid of Object.keys(aanw.perSessie || {})) {
+      for (const id of wegIds) if (aanw.perSessie[sid][id] != null) { delete aanw.perSessie[sid][id]; veranderd = true; }
+    }
+    for (const sid of leegeSessies) if (aanw.notities && aanw.notities[sid]) { delete aanw.notities[sid]; veranderd = true; }
+    return veranderd ? aanw : null;
+  }, now);
+
   return { purge: wegIds.size };
 }
 
