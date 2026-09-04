@@ -48,34 +48,40 @@ Het hart van fase 1.
 - **Dubbelboeking.** Een begeleider komt nooit op twee sessies tegelijk (zelfde
   datum + dagdeel): de generator vermijdt het, slepen en het sessievenster
   weigeren het (met een extra "toch doen"-bevestiging).
+- **Absenties.** Het sessievenster toont per leerling de aanwezigheid
+  (aanwezig/afwezig/afgemeld) en de notitie die de begeleider heeft ingevuld -
+  alleen inzien; de begeleider vult ze in op `/resource/`.
 - **Afgemeld.** Een begeleider koppelen op een datum waarop die zich afmeldde kan,
   maar alleen na een extra waarschuwing.
 
 ### Begeleiders
 Docenten, trainers en ondersteuners. Nieuwe begeleiders maak je aan bij
-**Accounts** (het trainerprofiel ontstaat meteen mee). Hier stel je per begeleider
-in: naam, e-mail, welke **vakken** en **jaarlagen** die kan bedienen en het
-maximum aantal sessies per weekend. De **voorkeuren** (liefste vakken, liefste
-jaarlagen, een gewenst vak dat niet in de lijst staat) zijn hier **alleen-inzien**
-met een slotje - de begeleider beheert die zelf. De **afwezigheid** ("kan niet
-op ...") is klein en alleen-lezen; aanpassen kan alleen na een onopvallende
-ontgrendeling met dubbele bevestiging.
+**Accounts** (het trainerprofiel ontstaat meteen mee). Elke begeleider staat als
+**compacte kaart** (niets inklappen): naam, e-mail, max. per weekend, en welke
+**vakken** en **jaarlagen** die kan bedienen (dichte chips). De **voorkeuren**
+(liefste vakken, liefste jaarlagen, gewenste vakken die niet in de lijst staan)
+staan er **alleen-inzien** op één regel met een slotje - de begeleider beheert
+die zelf. De **afwezigheid** ("kan niet op ...") staat op één regel; aanpassen kan
+alleen na een onopvallende ontgrendeling met dubbele bevestiging. Bovenaan een
+zoekveld op naam.
 
 ### Scholen en vakken
-De beheerbare lijsten: scholen, vakken, jaarlagen, blokken en de minimale/
-maximale groepsgrootte. Per blok geef je een naam, een begin- en einddatum en
-welke weekenddagen (zaterdag, zondag) worden aangeboden; het eerste blok begint
-na de herfstvakantie. Alles wat je hier toevoegt verschijnt meteen in het
-inschrijfformulier. Leerlingen mogen op het formulier ook een vak intypen dat
-niet in de lijst staat; komt dat vaker voor, voeg het dan hier toe.
+De beheerbare lijsten: scholen, vakken, jaarlagen, blokken, de minimale/maximale
+groepsgrootte en de **tijden per dagdeel** (standaard 09:00-16:00; die tijden
+staan op elke sessie voor trainer, leerling en school). De lijsten scrollen
+binnen hun eigen blok als ze lang worden. Per blok geef je een naam, een begin-
+en einddatum en welke weekenddagen worden aangeboden. Alles wat je hier toevoegt
+verschijnt meteen in het inschrijfformulier. Leerlingen mogen ook een vak intypen
+dat niet in de lijst staat; komt dat vaker voor, voeg het hier toe.
 
 ### Accounts
 Inlogaccounts voor mentoren/scholen en begeleiders (en extra beheerders).
 - Rol **Begeleider**: één stap. Je vult naam en e-mail in en kent vakken en
   jaarlagen toe - met de hand of via **"Voorstel uit cijferlijst"** (vink de
-  vakken aan met niveau havo/vwo en of ze zijn afgerond; Yippie stelt vakken en
-  jaarlagen voor, die je daarna bijstelt). Het trainerprofiel ontstaat meteen mee;
-  je hoeft niet apart bij Begeleiders iets aan te maken.
+  vakken aan met het hoogst gehaalde niveau mavo/havo/vwo en of dat is afgerond;
+  Yippie stelt vakken en jaarlagen voor, die je daarna bijstelt). Het
+  trainerprofiel ontstaat meteen mee; je hoeft niet apart bij Begeleiders iets aan
+  te maken.
 - Rol **Mentor/school**: koppel aan één school. Die persoon ziet uitsluitend de
   leerlingen van die school, alleen-lezen.
 - **Wachtwoord is optioneel.** Laat je het leeg, dan logt de persoon in via de

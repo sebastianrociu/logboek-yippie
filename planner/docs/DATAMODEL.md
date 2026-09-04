@@ -19,9 +19,23 @@ bij de eerstvolgende `mutate()` van die sectie; er is geen bulk-migratie.
   "jaarlagen": [{ "id": "jl_3h", "label": "3 havo", "niveau": "havo", "leerjaar": 3 }],
   "blokken":   [{ "id": "blok1", "label": "Blok 1 (na de herfstvakantie)",
                   "van": "2026-10-26", "tot": "2026-12-13", "dagen": ["za", "zo"] }],
-  "instellingen": { "groepMin": 4, "groepMax": 12, "mavoLabel": "vmbo-tl", "splitOpTraject": true }
+  "instellingen": {
+    "groepMin": 4, "groepMax": 12, "mavoLabel": "vmbo-tl", "splitOpTraject": true, "bewaarMaanden": 18,
+    "tijden": { "ochtend": { "van": "09:00", "tot": "12:30" }, "middag": { "van": "13:00", "tot": "16:00" } }
+  }
 }
 ```
+
+`instellingen.tijden` bepaalt de begin- en eindtijd per dagdeel (beheer past ze
+aan bij Scholen en vakken; standaard loopt een dag 09:00-16:00). `van`/`tot`
+komen mee op elke sessie in `/api/resource/mij`, `/api/mijn` en
+`/api/school/overzicht`.
+
+`jaarlagen` bevat sinds deze ronde het **volledige standaardrooster** (mavo 1-4,
+havo 1-5, vwo 1-6) met ids `jl_<niveau>_<leerjaar>`; `vindOfMaakJaarlaag` gebruikt
+datzelfde schema. `/api/resource/mij` vult met `alleJaarlagen()` nog aan zodat de
+trainer echt elke jaarlaag kan aanvinken, ook als config er handmatig van
+afwijkt.
 
 `jaarlagen[]` mag met de hand `{id,label}` blijven; het inschrijfformulier maakt
 er automatisch bij met `niveau` (`mavo`/`havo`/`vwo`) + `leerjaar`. `mavoLabel`
@@ -48,8 +62,9 @@ aangeboden. Leerlingen kiezen per blok een dag en dagdeel.
     "vakIds": ["vak_wi", "vak_na"],          // wat beheer toekent (kan het vak)
     "jaarlaagIds": ["jl_3h", "jl_4v"],       // wat beheer toekent (kan de jaarlaag)
     "vakVoorkeuren": ["vak_wi"],             // trainer-eigen: geeft het liefst
-    "voorkeurJaarlagen": ["jl_4v"],          // trainer-eigen: jaarlaag-voorkeur
-    "voorkeurVakVrij": "wiskunde D",         // trainer-eigen: gewenst vak dat niet in de lijst staat
+    "voorkeurJaarlagen": ["jl_vwo_4"],       // trainer-eigen: jaarlaag-voorkeur
+    "voorkeurVakkenVrij": ["Wiskunde D"],    // trainer-eigen: gewenste vakken die niet in de lijst staan (lijst)
+    "voorkeurVakVrij": "Wiskunde D",         // afgeleid: voorkeurVakkenVrij.join(", ") (voor oudere lezers)
     "maxPerWeekend": 3,
     "afwezigheid": [{ "datum": "2027-01-17", "dagdeel": "ochtend" }]
   }],
@@ -68,10 +83,12 @@ data; dev-KV is resetbaar, dus geen bulk-migratie).
 
 **Rechten.** `PUT /api/beheer/resources` laat beheer alleen `naam`, `email`,
 `vakIds`, `jaarlaagIds` en `maxPerWeekend` wijzigen. `vakVoorkeuren`,
-`voorkeurJaarlagen` en `voorkeurVakVrij` kan beheer **nooit** overschrijven
-(alleen de begeleider via `PUT /api/resource/beschikbaarheid`). `afwezigheid`
-overschrijft beheer alleen als het request `staAfwezigheidToe: true` meestuurt
-(UI: na een expliciete ontgrendeling met dubbele bevestiging).
+`voorkeurJaarlagen` en `voorkeurVakkenVrij`/`voorkeurVakVrij` kan beheer **nooit**
+overschrijven (alleen de begeleider via `PUT /api/resource/beschikbaarheid`).
+`afwezigheid` overschrijft beheer alleen als het request `staAfwezigheidToe: true`
+meestuurt (UI: na een expliciete ontgrendeling met dubbele bevestiging). Beheer
+leest de sectie wel voor de compacte begeleiderkaart, en
+`GET /api/beheer/aanwezigheid` voor absenties + notities in het sessievenster.
 
 Een begeleider ontstaat nu samen met het account: `POST /api/beheer/users` met
 `rol: "resource"` en zonder `resourceId` maakt de `resources`-entry aan
