@@ -304,7 +304,18 @@ dialog::backdrop{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit
 .suggesties li:hover,.suggesties li[aria-selected="true"]{background:var(--coral-light);color:var(--coral-dark)}
 
 /* ===== Planning: week-rooster met sessieblokken ==================== */
-.pr-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.pr-controls{display:flex;gap:8px;align-items:center;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.pr-controls > *{flex-shrink:0}
+.pr-controls select{min-width:0;width:auto;padding:7px 28px 7px 10px;font-size:12.5px}
+/* Planning: rooster links, knelpunten als vaste kolom rechts op breed scherm */
+.plan-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+@media(min-width:1040px){.plan-layout{grid-template-columns:minmax(0,1fr) 320px}}
+.plan-side{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow:auto;overscroll-behavior:contain}
+@media(max-width:1039px){.plan-side{position:static;max-height:none}}
+/* Snelkeuze-knoppenrij (jaarlaag-presets e.d.) */
+.quickrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.quickrow button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.quickrow button:hover{border-color:var(--coral);color:var(--coral-dark)}
 .pr-cell{min-height:60px;border:1.5px dashed var(--line);border-radius:var(--r-m);padding:6px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px;transition:border-color .12s,background .12s}
 .pr-cell.kan-hier{border-color:var(--coral);background:var(--coral-light);cursor:pointer}
 .pr-cell>.pr-dd{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mute-2)}
