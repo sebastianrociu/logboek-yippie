@@ -468,7 +468,7 @@
       $('d-link').value = link;
       $('d-open').href = link;
       var blokN = {}; (cfg.blokken || []).forEach(function (b) { blokN[b.id] = b.label; });
-      var trNaam = tr === 'examentraining' ? 'Examentraining' : 'Bijspijkertraject';
+      var trNaam = tr === 'examentraining' ? 'Examentraining' : 'Bijspijker';
       $('done-sum').innerHTML = '<b>' + trNaam + ' - ' + YP.esc(niv === 'mavo' ? 'vmbo-tl' : niv) + ' ' + lj + '</b><br>' + blokken.map(function (k) {
         return YP.esc(blokN[k.blokId] || '') + ' - ' + YP.esc(DAGNAAM[k.dag] || k.dag) + ' ' + YP.esc(DDNAAM[k.dagdeel] || k.dagdeel) + ' - ' + YP.esc(k.vakken.join(', '));
       }).join('<br>');
